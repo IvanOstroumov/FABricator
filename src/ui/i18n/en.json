@@ -1,0 +1,49 @@
+{
+  "menu": {
+    "file": "File",
+    "edit": "Edit",
+    "add": "Add",
+    "select": "Select",
+    "view": "View",
+    "help": "Help"
+  },
+  "toolbar": {
+    "select": "Select",
+    "move": "Move",
+    "rotate": "Rotate",
+    "scale": "Scale"
+  },
+  "viewportToolbar": {
+    "mode": {
+      "object": "Object",
+      "vertex": "Vertex",
+      "edge": "Edge",
+      "face": "Face"
+    },
+    "shading": {
+      "solid": "Solid",
+      "wireframe": "Wireframe",
+      "solidWireframe": "Solid+Wireframe",
+      "texture": "Texture"
+    },
+    "snap": "Snap",
+    "checkerboard": "Checkerboard"
+  },
+  "views": {
+    "front": "Front",
+    "side": "Side",
+    "top": "Top",
+    "perspective": "Perspective"
+  },
+  "panels": {
+    "hierarchy": "Hierarchy",
+    "properties": "Properties",
+    "materials": "Materials",
+    "uvEditor": "UV Editor"
+  },
+  "status": {
+    "triangles": "Triangles",
+    "selection": "Selection",
+    "hint": "Left click: orbit · Alt+Left click: pan · Wheel: zoom"
+  }
+}
