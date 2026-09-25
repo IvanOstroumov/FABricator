@@ -8,6 +8,8 @@ import { commitMeshOp } from '../commands/meshOps';
 import { extrudeFaces } from '../geometry/ops/extrude';
 import { insetFaces } from '../geometry/ops/inset';
 import { deleteFaces, deleteEdges, deleteVertices } from '../geometry/ops/deleteElements';
+import { loopCut } from '../geometry/ops/loopCut';
+import { bevelEdge } from '../geometry/ops/bevel';
 
 function showError(message: string): void {
   useViewStore.getState().setTransformHint(`Errore: ${message}`);
@@ -63,6 +65,35 @@ export function useGlobalShortcuts(): void {
           const result = commitMeshOp(run, 'Estrudi', editingObject.meshId, editingMesh, after);
           if (result.ok) useSelectionStore.getState().setComponentSelection(new Set(capFaces));
           else showError(result.error);
+        }
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+        if (mode === 'edge' && editingObject?.meshId && editingMesh && componentSelection.size === 1) {
+          e.preventDefault();
+          const [startEdge] = componentSelection;
+          const loop = editingMesh.edgeLoop(startEdge);
+          const after = loopCut(editingMesh, loop, 0.5);
+          const result = commitMeshOp(run, 'Loop cut', editingObject.meshId, editingMesh, after);
+          if (result.ok) clearComponentSelection();
+          else showError(result.error);
+        }
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        if (mode === 'edge' && editingObject?.meshId && editingMesh && componentSelection.size === 1) {
+          e.preventDefault();
+          const [selectedEdge] = componentSelection;
+          try {
+            const after = bevelEdge(editingMesh, selectedEdge, 0.1);
+            const result = commitMeshOp(run, 'Bevel', editingObject.meshId, editingMesh, after);
+            if (result.ok) clearComponentSelection();
+            else showError(result.error);
+          } catch (err) {
+            showError(err instanceof Error ? err.message : 'Bevel non riuscito');
+          }
         }
         return;
       }

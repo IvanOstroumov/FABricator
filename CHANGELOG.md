@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased] — Fase 5: loop cut, bevel, suddividi
+
+### Aggiunto
+
+- **Correzione di un bug reale in `EditableMesh.edgeLoop()`** (introdotto in Fase 3): l'attraversamento applicava l'operazione "spigolo opposto" due volte per passo, facendo oscillare il cammino tra sole 2 facce invece di percorrere l'intero anello. Riscritto con un attraversamento entra/esci corretto, che ora copre anche entrambe le direzioni a partire dallo spigolo di partenza (utile per una striscia aperta, es. una riga di una griglia piana, non solo per un anello chiuso come il fianco di un cilindro). Aggiunti test di regressione che verificano la dimensione esatta dell'anello (8 spigoli su un cilindro a 8 segmenti, 5 su una riga di piano 4×3) — i vecchi test si limitavano a controllare "lunghezza > 0", che il bug comunque soddisfaceva.
+- `geometry/ops/loopCut`: taglia ogni quad attraversato da un anello di spigoli al parametro t (default 0.5), dividendolo in due.
+- `geometry/ops/bevel`: bevel semplificato a 1 segmento di uno spigolo interno — sposta i due estremi lungo gli spigoli adiacenti non selezionati, crea una striscia e due triangoli di chiusura ai vertici; rifiuta (con eccezione, mostrata in barra di stato) il bevel su uno spigolo di bordo, per ora l'unico "caso non supportato" gestito.
+- `geometry/ops/subdivide`: suddivisione lineare (senza smoothing Catmull-Clark) dell'intera mesh — ogni spigolo diviso a metà, ogni faccia a n lati diventa n quad con un vertice centrale.
+- Scorciatoie: Ctrl+R (loop cut) e Ctrl+B (bevel), attive in modalità spigolo con esattamente uno spigolo selezionato.
+- Test: Vitest per loop cut/bevel/subdivide su cubo e cilindro (conteggio facce atteso, rifiuto del bevel su bordo); Playwright per il flusso seleziona spigolo → bevel → annulla → loop cut → annulla, verificato tramite il conteggio triangoli in barra di stato.
+
+### Note
+
+- **`Suddividi` non ha ancora una scorciatoia/pulsante**: il PRD non ne specifica una nella tabella delle scorciatoie; la funzione è pronta e testata (`geometry/ops/subdivide`) ma non ancora collegata all'interfaccia. Opera inoltre sull'intera mesh, non su un sottoinsieme di spigoli/facce selezionati (che richiederebbe gestire i T-junction).
+- **Bevel a un solo segmento** (il PRD ne prevede 1..N): la generalizzazione a N segmenti e alla chiusura a n-gon quando più spigoli bevelati si incontrano su un vertice (richiesta dal PRD per quel caso) restano da fare.
+- **Nessuna anteprima interattiva col mouse** per loop cut/bevel (il PRD la descrive per entrambi): si applicano subito con un parametro di default (t=0.5, distanza=0.1).
+
 ## [Unreleased] — Fase 4: estrudi, inset, cancella
 
 ### Aggiunto

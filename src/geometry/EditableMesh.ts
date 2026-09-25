@@ -173,24 +173,42 @@ export class EditableMesh {
     return twin === EMPTY ? h : Math.min(h, twin);
   }
 
-  /** Edge-loop walk starting from a half-edge, per the PRD algorithm: cross each quad via next(next(h)), then twin. */
+  private oppositeInFace(h: number): number {
+    return this.heNext[this.heNext[h]];
+  }
+
+  /**
+   * Edge-loop walk starting from a half-edge, per the PRD algorithm: cross
+   * each quad via its opposite edge (`next(next(h))`), then `twin`, into
+   * the next quad. Walks both directions from the start edge so it covers
+   * a whole open strip (e.g. a plane's grid) as well as a closed ring
+   * (e.g. a cylinder's side).
+   */
   edgeLoop(startHe: number): number[] {
-    const loopHalfEdges: number[] = [];
-    let h = startHe;
-    for (let guard = 0; guard < this.heVert.length; guard++) {
-      loopHalfEdges.push(this.edgeId(h));
-      const face = this.heFace[h];
-      if (face === EMPTY) break;
-      const verts = this.faceVertices(face);
-      if (verts.length !== 4) break; // only quads carry a well-defined opposite edge
-      const twin = this.heTwin[this.heNext[this.heNext[h]]];
-      if (twin === EMPTY) break;
-      const nextFace = this.heFace[twin];
-      if (nextFace === EMPTY) break;
-      h = this.heNext[this.heNext[twin]];
-      if (this.edgeId(h) === this.edgeId(startHe)) break;
-    }
-    return [...new Set(loopHalfEdges)];
+    const collected = new Set<number>();
+    const startId = this.edgeId(startHe);
+
+    const walk = (initialEnter: number): void => {
+      let enter = initialEnter;
+      for (let guard = 0; guard < this.heVert.length; guard++) {
+        const face = this.heFace[enter];
+        if (face === EMPTY) return;
+        const verts = this.faceVertices(face);
+        if (verts.length !== 4) return; // only quads carry a well-defined opposite edge
+        const exit = this.oppositeInFace(enter);
+        collected.add(this.edgeId(enter));
+        collected.add(this.edgeId(exit));
+        const twin = this.heTwin[exit];
+        if (twin === EMPTY) return;
+        if (this.edgeId(exit) === startId) return; // closed the loop
+        enter = twin;
+      }
+    };
+
+    walk(startHe);
+    const startTwin = this.heTwin[startHe];
+    if (startTwin !== EMPTY) walk(startTwin);
+    return [...collected];
   }
 
   /** Breadth-first over faces sharing an edge (twin), for "select linked" (L). */
