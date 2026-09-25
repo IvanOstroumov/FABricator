@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDocumentStore } from '../store/useDocumentStore';
 import { useSelectionStore } from '../store/useSelectionStore';
@@ -8,6 +8,27 @@ import { createDefaultMaterial, type MaterialDef } from '../../materials/types';
 import { hexToLinearRgb, linearRgbToHex } from '../../materials/colorUtils';
 import { AddMaterialCommand, MaterialPropertyCommand } from '../../commands/MaterialCommand';
 import { AssignMaterialCommand } from '../../commands/AssignMaterialCommand';
+import type { Document } from '../../core/Document';
+
+/** One thumbnail in the project's texture library (C-06): click to apply it as the active material's base color map. */
+function TextureThumb({ doc, textureId, onPick }: { doc: Document; textureId: string; onPick: (id: string) => void }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const bytes = doc.textureData.get(textureId);
+    if (!bytes) return;
+    const objectUrl = URL.createObjectURL(new Blob([new Uint8Array(bytes)]));
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [doc, textureId]);
+
+  const texture = doc.textures.get(textureId);
+  if (!url || !texture) return null;
+  return (
+    <button type="button" className="texture-thumb" title={texture.name} onClick={() => onPick(textureId)}>
+      <img src={url} alt={texture.name} />
+    </button>
+  );
+}
 
 export function MaterialsPanel() {
   const { t } = useTranslation();
@@ -166,6 +187,22 @@ export function MaterialsPanel() {
           <button type="button" onClick={assignToSelection} disabled={!activeObject && !editingObjectId}>
             Assegna alla selezione (M)
           </button>
+
+          {doc.textures.size > 0 && (
+            <div className="texture-library">
+              <span className="properties-group__label">Libreria texture</span>
+              <div className="texture-library__grid">
+                {[...doc.textures.keys()].map((textureId) => (
+                  <TextureThumb
+                    key={textureId}
+                    doc={doc}
+                    textureId={textureId}
+                    onPick={(id) => updateActive({ maps: { ...activeMaterial.maps, baseColor: id } }, 'Texture')}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

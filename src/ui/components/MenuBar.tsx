@@ -11,6 +11,9 @@ import { commitMeshOp } from '../../commands/meshOps';
 import { mergeAtCenter, mergeAtFirst, mergeByDistance } from '../../geometry/ops/merge';
 import { fillHole } from '../../geometry/ops/fill';
 import { bridgeLoops } from '../../geometry/ops/bridge';
+import { planarUnwrap, cylindricalUnwrap } from '../../geometry/ops/unwrap';
+import { UvEditCommand } from '../../commands/UvEditCommand';
+import { ToggleSeamCommand } from '../../commands/ToggleSeamCommand';
 
 function showMenuError(message: string): void {
   useViewStore.getState().setTransformHint(`Errore: ${message}`);
@@ -19,7 +22,7 @@ function showMenuError(message: string): void {
   }, 3000);
 }
 
-const MENUS = ['file', 'edit', 'add', 'select', 'view', 'help'] as const;
+const MENUS = ['file', 'edit', 'add', 'select', 'uv', 'view', 'help'] as const;
 const PRIMITIVES: { kind: PrimitiveKind; label: string }[] = [
   { kind: 'cube', label: 'Cubo' },
   { kind: 'cylinder', label: 'Cilindro' },
@@ -90,6 +93,28 @@ export function MenuBar() {
     } catch (err) {
       showMenuError(err instanceof Error ? err.message : 'Bridge non riuscito');
     }
+  };
+
+  const runQuickUnwrap = (kind: 'planar' | 'cylindrical') => {
+    setOpenMenu(null);
+    const targetObjectId = mode === 'object' ? activeObject : editingObjectId;
+    const targetObject = targetObjectId ? doc.objects.get(targetObjectId) : null;
+    const targetMesh = targetObject?.meshId ? doc.meshes.get(targetObject.meshId) : null;
+    if (!targetObject?.meshId || !targetMesh) return;
+    const faceIndices = mode === 'face' && componentSelection.size > 0 ? [...componentSelection] : undefined;
+    if (kind === 'planar' && (!faceIndices || faceIndices.length === 0)) {
+      showMenuError('Seleziona almeno una faccia per la proiezione planare');
+      return;
+    }
+    const after =
+      kind === 'planar' ? planarUnwrap(targetMesh, faceIndices!) : cylindricalUnwrap(targetMesh, faceIndices);
+    run(new UvEditCommand(kind === 'planar' ? 'Unwrap planare' : 'Unwrap cilindrico', targetObject.meshId, targetMesh.heUv, after));
+  };
+
+  const runToggleSeam = (mark: boolean) => {
+    setOpenMenu(null);
+    if (mode !== 'edge' || !editingObject?.meshId || componentSelection.size === 0) return;
+    run(new ToggleSeamCommand(editingObject.meshId, [...componentSelection], mark));
   };
 
   const addPrimitive = (kind: PrimitiveKind) => {
@@ -173,6 +198,22 @@ export function MenuBar() {
               </button>
               <button type="button" disabled={mode !== 'edge' || componentSelection.size !== 2} onClick={runBridge}>
                 Bridge
+              </button>
+            </div>
+          )}
+          {openMenu === menu && menu === 'uv' && (
+            <div className="menu-bar__dropdown">
+              <button type="button" disabled={!editingObject && !activeObject} onClick={() => runQuickUnwrap('planar')}>
+                Proiezione planare
+              </button>
+              <button type="button" disabled={!editingObject && !activeObject} onClick={() => runQuickUnwrap('cylindrical')}>
+                Proiezione cilindrica
+              </button>
+              <button type="button" disabled={mode !== 'edge' || componentSelection.size === 0} onClick={() => runToggleSeam(true)}>
+                Marca seam
+              </button>
+              <button type="button" disabled={mode !== 'edge' || componentSelection.size === 0} onClick={() => runToggleSeam(false)}>
+                Rimuovi seam
               </button>
             </div>
           )}

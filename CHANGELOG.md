@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased] — Fase 9: proiezioni UV, seam, libreria texture
+
+### Aggiunto
+
+- `geometry/ops/unwrap`: aggiunte `planarUnwrap` (proietta sul piano perpendicolare alla normale media della selezione) e `cylindricalUnwrap` (angolo attorno a Y come u, altezza come v), accanto alla `boxUnwrap` della Fase 7; condividono un unico helper `forEachCorner`.
+- `EditableMesh.seamEdges`: insieme di id di spigolo (dallo stesso schema canonico di `edges()`) marcati come seam UV (U-05); `commands/ToggleSeamCommand` per marcarli/rimuoverli in modo annullabile. Mostrati in rosso nel viewport durante la modifica (`render/SelectionOverlay`), come da palette colori del PRD ("seam rosso").
+- `MaterialsPanel`: libreria texture con anteprime (C-06) — ogni texture importata nel progetto appare come miniatura cliccabile, applicabile come mappa colore del materiale attivo senza dover reimportare il file.
+- Menu **UV** in barra: proiezione planare/cilindrica, marca/rimuovi seam — attivi in base a modalità e selezione correnti.
+- Test: Vitest per le nuove proiezioni e per i seam (marca/pulisci, sopravvivenza a `clone()`); Playwright per marca-seam, libreria texture, e un test di regressione dedicato per il bug qui sotto.
+
+### Corretto
+
+- **Bug reale nell'editor UV**: il layout mostrato era memoizzato solo sul riferimento all'oggetto `EditableMesh`, ma unwrap/seam mutano `heUv` sul posto (stessa istanza) — quindi il pannello non si aggiornava mai dopo il primo render. Scoperto verificando dal vivo una proiezione cilindrica: l'editor mostrava ancora il layout di default della primitiva. Corretto aggiungendo la revisione del documento alle dipendenze del memo. Questo significa anche che **lo screenshot di verifica della Fase 7 per l'unwrap automatico mostrava in realtà le UV di default**, non il risultato della proiezione a scatola — l'unwrap stesso era corretto (i test unitari lo confermano), solo la sua visualizzazione nell'editor non si aggiornava.
+
+### Note
+
+- **Coordinate V non normalizzate**: sia la proiezione cilindrica sia quella a scatola usano le coordinate del mondo direttamente come UV; per oggetti più alti/larghi di 1 m il layout risultante eccede lo spazio 0..1 e appare parzialmente fuori dai bordi nell'editor UV (dato comunque corretto, solo non riscalato per adattarsi allo spazio texture — nessun impacchettamento delle isole, coerente con la nota della Fase 7).
+- **Seam marcati ma non usati da nessun algoritmo di unwrap**: le proiezioni rapide (planare/cilindrica/a scatola) non tengono conto dei seam per decidere dove tagliare — servono solo come indicatore visivo per ora, in attesa di un vero algoritmo di unwrap basato su seam (xatlas o equivalente).
+
 ## [Unreleased] — Fase 8: mirror, merge, riempi buchi, bridge
 
 ### Aggiunto

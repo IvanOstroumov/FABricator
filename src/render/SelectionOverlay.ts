@@ -9,6 +9,7 @@ const baseVertexMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 5, 
 const selectedVertexMaterial = new THREE.PointsMaterial({ color: 0xff9933, size: 8, sizeAttenuation: false });
 const baseEdgeMaterial = new THREE.LineBasicMaterial({ color: 0xcccccc });
 const selectedEdgeMaterial = new THREE.LineBasicMaterial({ color: 0xff9933 });
+const seamMaterial = new THREE.LineBasicMaterial({ color: 0xdd2222, linewidth: 2 });
 const selectedFaceMaterial = new THREE.MeshBasicMaterial({
   color: 0xff9933,
   transparent: true,
@@ -97,6 +98,21 @@ export function updateSelectionOverlay(
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', positionsAttribute(points));
     group.add(new THREE.Mesh(geom, selectedFaceMaterial));
+  }
+
+  if (mesh.seamEdges.size > 0) {
+    const seamPoints: THREE.Vector3[] = [];
+    for (const edge of mesh.edges()) {
+      if (!mesh.seamEdges.has(edge.id)) continue;
+      const pa = mesh.vertexPosition(edge.a);
+      const pb = mesh.vertexPosition(edge.b);
+      seamPoints.push(new THREE.Vector3(pa.x, pa.y, pa.z), new THREE.Vector3(pb.x, pb.y, pb.z));
+    }
+    if (seamPoints.length) {
+      const seamGeom = new THREE.BufferGeometry();
+      seamGeom.setAttribute('position', positionsAttribute(seamPoints));
+      group.add(new THREE.LineSegments(seamGeom, seamMaterial));
+    }
   }
 
   hostMesh.add(group);

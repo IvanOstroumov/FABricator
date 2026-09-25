@@ -15,7 +15,7 @@ const VIEW_SIZE = 512;
 export function UvEditorPanel() {
   const { t } = useTranslation();
   const doc = useDocumentStore((s) => s.doc);
-  useDocumentStore((s) => s.revision);
+  const revision = useDocumentStore((s) => s.revision);
   const activeObject = useSelectionStore((s) => s.activeObject);
   const checkerboard = useViewStore((s) => s.checkerboard);
   const toggleCheckerboard = useViewStore((s) => s.toggleCheckerboard);
@@ -35,7 +35,13 @@ export function UvEditorPanel() {
       }
     }
     return segments;
-  }, [mesh]);
+    // `mesh.heUv` can be mutated in place (unwrap, seam edits) without the
+    // `mesh` object reference itself changing, so `revision` is a required
+    // dependency here, not just `mesh` — otherwise this memo goes stale
+    // after the very first unwrap. The linter can't see that, since the
+    // callback body never reads `revision` directly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mesh, revision]);
 
   return (
     <div className="uv-editor">

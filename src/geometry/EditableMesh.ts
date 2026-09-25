@@ -32,6 +32,8 @@ export class EditableMesh {
   faceHalfEdge: number[] = [];
   faceMaterial: number[] = []; // index into materialSlots, or -1 = no material assigned (renders with the default fallback)
   materialSlots: string[] = []; // MaterialDef ids, in project-palette order
+  /** Canonical edge ids (from `edges()`) marked as UV seams (U-05), shown red in the viewport. */
+  seamEdges = new Set<number>();
 
   get vertexCount(): number {
     return this.positions.length / 3;
@@ -309,6 +311,7 @@ export class EditableMesh {
     copy.faceHalfEdge = [...this.faceHalfEdge];
     copy.faceMaterial = [...this.faceMaterial];
     copy.materialSlots = [...this.materialSlots];
+    copy.seamEdges = new Set(this.seamEdges);
     return copy;
   }
 
