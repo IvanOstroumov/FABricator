@@ -13,8 +13,8 @@ import { bevelEdge } from '../geometry/ops/bevel';
 import { useMaterialStore } from './store/useMaterialStore';
 import { AssignMaterialCommand } from '../commands/AssignMaterialCommand';
 import { saveFabFile } from '../io/fab/io';
-import { saveFbxFile } from '../io/fbx/io';
 import { buildExportReport } from '../io/fbx/export';
+import { useExportStore } from './store/useExportStore';
 import { boxUnwrap } from '../geometry/ops/unwrap';
 import { UvEditCommand } from '../commands/UvEditCommand';
 
@@ -53,12 +53,7 @@ export function useGlobalShortcuts(): void {
         e.preventDefault();
         const objectIds = activeObject ? [activeObject] : [...doc.objects.keys()];
         const report = buildExportReport(doc, objectIds);
-        if (report.warnings.length > 0) showError(report.warnings[0]);
-        void saveFbxFile(doc, objectIds, {
-          scope: activeObject ? 'selection' : 'scene',
-          triangulate: false,
-          pivotMode: 'keep',
-        });
+        useExportStore.getState().requestExport({ report, objectIds, scope: activeObject ? 'selection' : 'scene' });
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {

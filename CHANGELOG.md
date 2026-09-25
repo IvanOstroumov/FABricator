@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased] — Fase 10: import OBJ, report di export, persistenza impostazioni
+
+### Aggiunto
+
+- `io/import/objImport.ts`: parser Wavefront OBJ minimale (E-06) — vertici, UV per-corner (da `vt`, indicizzate come nel file), facce n-gon; normali (`vn`) lette ma ignorate (`EditableMesh` calcola sempre le proprie via Newell); gruppi `o`/`g` multipli uniti in un'unica mesh; `mtllib`/`usemtl` ignorati (nessun reimport di materiali da `.mtl` sidecar).
+- `io/import/io.ts`: wrapper I/O con lo stesso pattern duale Tauri/browser-fallback già usato per `.fab` e FBX.
+- `commands/factories.createImportedObjectCommand`: avvolge una mesh già parsata in un nuovo `SceneObject`, con la stessa regola di unicità del nome (`Nome.001`, ecc.) già usata per le primitive; `createPrimitiveCommand` ora la riusa.
+- Voce **Importa OBJ…** nel menu File.
+- `ExportReportDialog` (E-05): prima di scrivere il file FBX, mostra un riepilogo (numero mesh, triangoli, materiali, eventuali avvisi come facce degeneri o non assegnate) con conferma/annulla esplicita, sia dal menu File sia dalla scorciatoia Ctrl+Shift+E (stato condiviso in `useExportStore` così entrambi i percorsi mostrano lo stesso dialogo).
+- `useSettingsStore` (D-06): persistito su `localStorage` tramite il middleware `persist` di zustand (chiave `fabricator-settings`) — lingua e soglia di avviso triangoli sopravvivono a un ricaricamento/aggiornamento della pagina. Lo stato di sessione del viewport (shading, snap, ecc. in `useViewStore`) resta intenzionalmente non persistito: riparte da zero con un nuovo documento.
+- Test: Vitest per il parser OBJ (cubo con vertici condivisi, UV per-corner, triangoli, indici fuori intervallo, file vuoto); Playwright per l'importazione OBJ (successo ed errore), per il dialogo di riepilogo export (statistiche mostrate, annulla non scrive file) e aggiornamento del test di export FBX esistente per il nuovo passaggio di conferma.
+
+### Corretto
+
+- **Bug reale in `io/import/io.ts`**: l'handler `onchange` dell'input file era `async` ma non catturava gli errori di `parseObj` — un OBJ non valido lanciava un'eccezione dentro la funzione async senza mai risolvere né rigettare la Promise esterna, quindi l'errore restava un unhandled rejection invece di arrivare al blocco `catch` del chiamante e mostrare il messaggio in UI. Scoperto scrivendo il test Playwright per il caso di file non valido (il messaggio "Errore" non appariva mai). Corretto propagando l'errore con `reject(err)`.
+
+### Note / limiti noti
+
+- **Nessuna validazione prestazionale reale sulla scena di riferimento del PRD** (200k triangoli, ≥60 fps, <2 GB VRAM): in questo ambiente sandbox il rendering è software (SwiftShader-like, nessuna GPU reale) — una prova con ~30 sfere (21.600 triangoli) è scesa a ~4 fps, un dato privo di significato per hardware reale. La validazione va rifatta su una macchina Windows con GPU vera prima del rilascio.
+- Import OBJ non legge `.mtl` né normali personalizzate; materiali e smoothing vanno reimpostati manualmente dopo l'importazione.
+- Il percorso Tauri nativo di `importObjFile` (dialog nativo + `readTextFile`) non è mai stato eseguito in questo container Linux (nessun binario Tauri) — solo il fallback browser (`<input type="file">`) è stato verificato dal vivo.
+
 ## [Unreleased] — Fase 9: proiezioni UV, seam, libreria texture
 
 ### Aggiunto

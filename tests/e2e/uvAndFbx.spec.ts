@@ -35,9 +35,13 @@ test('exports the scene to FBX from the File menu', async ({ page }) => {
   await page.getByText('Add', { exact: true }).click();
   await page.getByRole('button', { name: 'Sfera' }).click();
 
+  await page.getByText('File', { exact: true }).click();
+  await page.getByText(/Esporta FBX/).click();
+  await expect(page.getByText('Riepilogo esportazione FBX')).toBeVisible();
+
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByText('File', { exact: true }).click().then(() => page.getByText(/Esporta FBX/).click()),
+    page.getByRole('button', { name: 'Esporta' }).click(),
   ]);
   expect(download.suggestedFilename()).toBe('export.fbx');
 

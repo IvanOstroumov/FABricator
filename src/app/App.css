@@ -442,3 +442,61 @@ button.active {
 .status-bar__spacer {
   flex: 1;
 }
+
+.export-report-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.export-report-dialog {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+  min-width: 320px;
+  max-width: 480px;
+}
+
+.export-report-dialog h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.export-report-dialog__stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0 0 12px;
+}
+
+.export-report-dialog__stats dt {
+  color: var(--text-dim);
+}
+
+.export-report-dialog__stats dd {
+  margin: 0;
+  text-align: right;
+}
+
+.export-report-dialog__warnings {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  color: #e0a030;
+  font-size: 12px;
+}
+
+.export-report-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.export-report-dialog__confirm {
+  background: var(--accent, #3b82f6);
+  color: #fff;
+}

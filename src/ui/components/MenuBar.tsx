@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDocumentStore } from '../store/useDocumentStore';
 import { useSelectionStore } from '../store/useSelectionStore';
-import { createPrimitiveCommand, type PrimitiveKind } from '../../commands/factories';
+import { createPrimitiveCommand, createImportedObjectCommand, type PrimitiveKind } from '../../commands/factories';
 import { saveFabFile, openFabFile } from '../../io/fab/io';
-import { saveFbxFile } from '../../io/fbx/io';
+import { importObjFile } from '../../io/import/io';
+import { ObjParseError } from '../../io/import/objImport';
 import { buildExportReport } from '../../io/fbx/export';
 import { useViewStore } from '../store/useViewStore';
 import { commitMeshOp } from '../../commands/meshOps';
@@ -14,6 +15,7 @@ import { bridgeLoops } from '../../geometry/ops/bridge';
 import { planarUnwrap, cylindricalUnwrap } from '../../geometry/ops/unwrap';
 import { UvEditCommand } from '../../commands/UvEditCommand';
 import { ToggleSeamCommand } from '../../commands/ToggleSeamCommand';
+import { useExportStore } from '../store/useExportStore';
 
 function showMenuError(message: string): void {
   useViewStore.getState().setTransformHint(`Errore: ${message}`);
@@ -35,6 +37,7 @@ const PRIMITIVES: { kind: PrimitiveKind; label: string }[] = [
 export function MenuBar() {
   const { t } = useTranslation();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const requestExport = useExportStore((s) => s.requestExport);
   const doc = useDocumentStore((s) => s.doc);
   const run = useDocumentStore((s) => s.run);
   const markSaved = useDocumentStore((s) => s.markSaved);
@@ -131,18 +134,25 @@ export function MenuBar() {
     if (saved) markSaved('progetto.fab');
   };
 
-  const handleExportFbx = async () => {
+  const handleExportFbx = () => {
     setOpenMenu(null);
     const objectIds = activeObject ? [activeObject] : [...doc.objects.keys()];
     const report = buildExportReport(doc, objectIds);
-    if (report.warnings.length > 0) {
-      useViewStore.getState().setTransformHint(`Errore: ${report.warnings[0]}`);
+    requestExport({ report, objectIds, scope: activeObject ? 'selection' : 'scene' });
+  };
+
+  const handleImportObj = async () => {
+    setOpenMenu(null);
+    try {
+      const imported = await importObjFile();
+      if (!imported) return;
+      const existingNames = [...doc.objects.values()].map((o) => o.name);
+      const cmd = createImportedObjectCommand(imported.mesh, imported.name, existingNames);
+      run(cmd);
+      select(cmd.createdObjectId);
+    } catch (err) {
+      showMenuError(err instanceof ObjParseError ? err.message : err instanceof Error ? err.message : 'importazione OBJ fallita');
     }
-    await saveFbxFile(doc, objectIds, {
-      scope: activeObject ? 'selection' : 'scene',
-      triangulate: false,
-      pivotMode: 'keep',
-    });
   };
 
   const handleOpen = async () => {
@@ -174,10 +184,13 @@ export function MenuBar() {
               <button type="button" onClick={() => void handleOpen()}>
                 Apri…
               </button>
+              <button type="button" onClick={() => void handleImportObj()}>
+                Importa OBJ…
+              </button>
               <button type="button" onClick={() => void handleSave()}>
                 Salva (Ctrl+S)
               </button>
-              <button type="button" onClick={() => void handleExportFbx()}>
+              <button type="button" onClick={handleExportFbx}>
                 Esporta FBX… (Ctrl+Shift+E)
               </button>
             </div>
