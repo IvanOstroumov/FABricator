@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased] — Fase 4: estrudi, inset, cancella
+
+### Aggiunto
+
+- `geometry/ops/regionOffset`: base condivisa per estrudi/inset — duplica i vertici delle facce selezionate, ricrea le facce non toccate, costruisce la nuova "cappa" e un quad laterale per ogni half-edge di bordo della regione (bordo = twin assente o non nella selezione).
+- `geometry/ops/extrude`: estrude un insieme di facce lungo la normale media, con una distanza di default (0.5) così il risultato non è mai degenere; l'utente può poi rifinire con G (Fase 3) in modalità faccia/vertice.
+- `geometry/ops/inset`: inset per faccia (indipendente per ogni faccia selezionata, non "regione" unificata), spostamento verso il centroide della faccia — approssimazione più semplice della formula bisettrice/`sin(θ/2)` del PRD, robusta per gli n-gon convessi delle primitive attuali.
+- `geometry/ops/deleteElements`: cancellazione coerente con la modalità di selezione — faccia: solo le facce; spigolo: le facce adiacenti; vertice: vertici e facce adiacenti (i vertici isolati risultanti spariscono automaticamente nella ricostruzione).
+- `commands/MeshTopologyCommand` + `commands/meshOps.commitMeshOp`: snapshot before/after dell'intera mesh per operazioni che cambiano la topologia; il commit avviene solo se `validate()` passa sul risultato, altrimenti l'operazione viene scartata e riportata (barra di stato) — per ora senza state "prev" persistito, il barra si pulisce dopo 3 s.
+- Scorciatoie: Ctrl+E (estrudi), I (inset) e Canc ora consapevole della modalità di selezione (cancella componenti di mesh in modalità vertice/spigolo/faccia, l'intero oggetto in modalità oggetto).
+- Test: Vitest per extrude/inset/delete (validità topologica, conteggio facce atteso, rifiuto di un'estrusione a distanza zero) e Playwright per il flusso completo estrudi→inset→cancella→annulla×3 verificato tramite il conteggio triangoli in barra di stato.
+
+### Note
+
+- **Inset non implementa ancora la "modalità regione"** del PRD (inset di più facce come un'unica area): ogni faccia selezionata viene insettata indipendentemente. Adeguato per l'uso più comune (una faccia alla volta).
+- **Formula di inset approssimata**: sposta ogni vertice verso il centroide della faccia anziché lungo la bisettrice esatta tra gli spigoli adiacenti; per gli n-gon regolari delle primitive attuali il risultato è visivamente equivalente, ma diverge su poligoni molto irregolari.
+- **Nessun feedback di anteprima interattiva** per estrudi/inset (il PRD descrive un'anteprima live col mouse prima di confermare): l'operazione si applica subito con un valore di default; l'utente regola il risultato dopo, a mano, con gli strumenti della Fase 3.
+- **`EditableMesh` non compatta ancora gli elementi cancellati con una free-list**: le operazioni di cancellazione ricostruiscono l'intera mesh da zero (O(n) per operazione) invece di marcare e riusare gli slot, più semplice e sufficientemente veloce per le dimensioni di mesh attuali; da rivedere se servirà su mesh molto più grandi.
+
 ## [Unreleased] — Fase 3: selezione vertice/spigolo/faccia, trasformo modale, snap
 
 ### Aggiunto
