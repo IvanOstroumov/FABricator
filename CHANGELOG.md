@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased] — Fase 2: kernel half-edge, primitive, gerarchia, undo/redo
+
+### Aggiunto
+
+- `geometry/EditableMesh`: struttura half-edge (n-gon supportati), `addVertex`/`addFace` con collegamento automatico dei twin, `faceVertices`, `faceNormal` (metodo di Newell), `validate()` (invarianti next/prev, twin, area minima), `clone()`. La versione con array tipizzati a capacità fissa e free-list arriva con le operazioni di modifica (Fase 4); per ora (solo creazione, nessuna cancellazione) sono semplici array JS.
+- `geometry/ops/primitives`: generatori parametrici per cubo, cilindro, cono, sfera (poli a triangoli), piano (suddiviso), toro — con UV per-corner generate direttamente.
+- `geometry/triangulate`: triangolazione a ventaglio per il rendering (ear-clipping generico rimandato alla Fase 4/5, quando servirà per n-gon concavi).
+- `core/Document` + `core/EventBus`: sorgente di verità della scena (oggetti, mesh, materiali/texture ancora vuoti), eventi tipizzati `objectAdded/Removed/Changed`, `meshChanged`, `revisionChanged`.
+- `commands/`: `Command`/`CommandStack` (undo/redo illimitato, gruppi di comandi, budget di memoria), `AddObjectCommand`, `RemoveObjectCommand`, `PropertyCommand` (rinomina, visibilità, blocco, trasformo — generico e supporta il merge per modifiche continue), `GroupObjectsCommand`, `DuplicateObjectCommand` (copia profonda di oggetto+mesh).
+- `render/MeshSync`: ponte Document → Three.js; un `THREE.Mesh` (+ overlay wireframe) per oggetto, aggiornato solo sugli eventi del Document.
+- UI: menu "Aggiungi" con le 6 primitive, `HierarchyPanel` (selezione, rinomina inline, nascondi/blocca, raggruppa), `PropertiesPanel` (posizione/rotazione/scala numeriche, editing live), scorciatoie globali Ctrl+Z/Ctrl+Shift+Z/Ctrl+Y (redo), Ctrl+D (duplica), Canc (cancella).
+- Test: Vitest per i 6 generatori di primitive (validità topologica) e per `CommandStack` (undo/redo singolo, gruppi, 50 cicli consecutivi senza errori — criterio di accettazione M-12); Playwright per il flusso aggiungi→rinomina→undo/redo e duplica→cancella.
+
+### Note
+
+- Selezione: solo a livello di oggetto intero per ora (`useSelectionStore`); le modalità vertice/spigolo/faccia (M-02) arrivano in Fase 3 insieme al picking.
+- Materiali: tutti gli oggetti condividono un unico `MeshStandardMaterial` placeholder; C-01…C-05 arrivano in Fase 6.
+- `EditableMesh.compact()` e `removeFace`/`removeVertex` sono ancora no-op/assenti: non serve finché non esistono operazioni di modifica che cancellano elementi (Fase 4).
+
 ## [Unreleased] — Fase 1: setup e viewport
 
 ### Aggiunto

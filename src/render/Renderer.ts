@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CameraController } from './CameraController';
 import { createGrid } from './Grid';
+import { MeshSync } from './MeshSync';
+import type { Document } from '../core/Document';
 import type { ShadingMode, QuickView } from '../ui/store/useViewStore';
 
 /**
@@ -11,6 +13,7 @@ import type { ShadingMode, QuickView } from '../ui/store/useViewStore';
 export class Renderer {
   readonly scene = new THREE.Scene();
   readonly cameraController: CameraController;
+  readonly meshSync: MeshSync;
   private webgl: THREE.WebGLRenderer;
   private container: HTMLElement;
   private grid: THREE.Group;
@@ -21,11 +24,7 @@ export class Renderer {
   private lastFpsSample = performance.now();
   private onFps?: (fps: number) => void;
 
-  // Demo content until modelling primitives land in Phase 2.
-  private demoMesh: THREE.Mesh;
-  private demoWireframe: THREE.LineSegments;
-
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, doc: Document) {
     this.container = container;
 
     this.webgl = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -48,19 +47,9 @@ export class Renderer {
     this.grid = createGrid();
     this.scene.add(this.grid);
 
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshStandardMaterial({ color: 0x7a9cc6, roughness: 0.6, metalness: 0.1 });
-    this.demoMesh = new THREE.Mesh(geometry, material);
-    this.demoMesh.position.y = 0.5;
-    this.scene.add(this.demoMesh);
-
-    this.demoWireframe = new THREE.LineSegments(
-      new THREE.WireframeGeometry(geometry),
-      new THREE.LineBasicMaterial({ color: 0x111111 }),
-    );
-    this.demoWireframe.position.copy(this.demoMesh.position);
-    this.demoWireframe.visible = false;
-    this.scene.add(this.demoWireframe);
+    this.meshSync = new MeshSync(doc, () => this.requestRender());
+    this.scene.add(this.meshSync.group);
+    this.meshSync.syncAll();
 
     this.resizeObserver = new ResizeObserver(() => this.handleResize());
     this.resizeObserver.observe(container);
@@ -73,10 +62,7 @@ export class Renderer {
   }
 
   setShading(mode: ShadingMode): void {
-    const mat = this.demoMesh.material as THREE.MeshStandardMaterial;
-    mat.wireframe = mode === 'wireframe';
-    this.demoWireframe.visible = mode === 'solid-wireframe';
-    this.requestRender();
+    this.meshSync.setShading(mode);
   }
 
   setQuickView(view: QuickView): void {
@@ -92,6 +78,7 @@ export class Renderer {
     this.disposed = true;
     this.resizeObserver.disconnect();
     this.cameraController.dispose();
+    this.meshSync.dispose();
     this.webgl.dispose();
     this.container.removeChild(this.webgl.domElement);
   }

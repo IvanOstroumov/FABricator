@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Renderer } from '../../render/Renderer';
 import { useViewStore, type QuickView } from '../store/useViewStore';
+import { useDocumentStore } from '../store/useDocumentStore';
 
 const NUMPAD_VIEWS: Record<string, QuickView> = {
   Numpad1: 'front',
@@ -16,10 +17,12 @@ export function Viewport3D() {
   const setQuickView = useViewStore((s) => s.setQuickView);
   const setFps = useViewStore((s) => s.setFps);
 
+  const doc = useDocumentStore((s) => s.doc);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const renderer = new Renderer(container);
+    const renderer = new Renderer(container, doc);
     rendererRef.current = renderer;
     renderer.onFrame(setFps);
 

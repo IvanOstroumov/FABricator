@@ -1,35 +1,32 @@
 # Stato del progetto
 
-Aggiornato alla fine della **Fase 1** (setup Tauri + React + Three.js, layout UI, viewport con camera, installer).
+Aggiornato alla fine della **Fase 2** (kernel half-edge, primitive, gerarchia, proprietà, undo/redo).
 
 ## Fatto in questa fase
 
 | Requisito PRD | Stato |
 | --- | --- |
-| F-01 Viewport con griglia, assi, orbit/pan/zoom | ✅ |
-| F-02 Viste rapide (tastierino 1/3/7/5) | ✅ |
-| F-03 Modalità di visualizzazione (solido/wireframe/solido+wireframe/texture) | ✅ (texture è un placeholder visivo, in attesa dei materiali) |
-| D-01 Installer NSIS 64 bit, per utente o per tutti | ✅ configurato in `tauri.conf.json`; non ancora buildato/testato su una macchina Windows pulita |
-| D-02 Collegamento Start/Desktop | ✅ (comportamento di default del bundler NSIS di Tauri) |
-| D-03 Bootstrapper WebView2 (`embedBootstrapper`) | ✅ configurato |
-| D-04 Associazione `.fab` | ✅ configurata in `tauri.conf.json`; l'apertura da doppio clic è gestita da `tauri-plugin-single-instance` + `get_startup_project_path`, ma non ancora testata end-to-end (il caricamento vero del file arriva in Fase 6) |
-| D-05 Disinstallazione pulita | ✅ (comportamento di default NSIS; da verificare in checklist manuale) |
+| M-01 Primitive con parametri modificabili alla creazione | ✅ le 6 primitive esistono e sono parametriche nel codice; non c'è ancora un dialog UI per impostare i parametri prima della creazione (si creano con i default, poi vanno scalate/modificate a mano) |
+| M-10 Smooth/flat shading per oggetto | ⚠️ il campo `shading` esiste sul `SceneObject` ma non è ancora collegato al calcolo delle normali (tutte le mesh usano normali flat per-faccia) |
+| M-12 Undo/redo illimitato | ✅ `CommandStack`, testato con 50 cicli consecutivi |
+| M-13 Duplica e istanze | ✅ duplica (copia profonda); le istanze (stesso `meshId` condiviso) non sono ancora esposte in UI |
+| F-04 Gerarchia: rinomina, nascondi, blocca, raggruppa | ✅ |
+| F-05 Pannello proprietà con trasformo numerico | ✅ |
 
 ## Non ancora fatto / noto mancante
 
-- **Non testato su Windows reale.** Questo ambiente è Linux; build, installer NSIS e comportamento WebView2 vanno verificati su una macchina Windows pulita prima di considerare la Fase 1 davvero chiusa (criterio di accettazione del PRD).
-- **`cargo check` non eseguibile in questo container.** Mancano le librerie di sviluppo GTK/WebKitGTK richieste da Tauri su Linux e il container non ha accesso ai repository APT per installarle; il codice Rust (minimo: `lib.rs`, `commands.rs`) non è stato quindi compilato qui. Verrà validato dalla pipeline `release.yml` su `windows-latest`, dove Tauri non dipende da GTK.
-- Pannelli Gerarchia/Proprietà/Materiali sono segnaposto vuoti (contenuto reale in Fase 2 e 6).
-- Toolbar strumenti (Q/W/E/R) cambia solo lo stato attivo, non è ancora collegata a un vero `Tool`/gizmo di trasformazione (Fase 3).
-- Nessuna primitiva reale, nessun kernel geometrico half-edge (Fase 2).
-- `react-resizable-panels` installato ma non cablato: layout attualmente a colonne CSS fisse, non ridimensionabile.
-- Firma del codice (D-07) e aggiornamento automatico (D-08) sono P2, non previsti in Fase 1.
+- **M-10 non collegato**: `shading.smooth`/`autoSmoothAngleDeg` sono dati nel modello ma `MeshSync` calcola sempre normali flat per-faccia; va aggiunto il calcolo delle normali "smooth" con soglia d'angolo.
+- **Dialog parametri primitiva**: le primitive si creano con valori di default fissi; un pannello per scegliere segmenti/raggio/dimensioni alla creazione non è stato implementato (il PRD lo richiede solo per M-01 "parametri modificabili", interpretato qui come modificabili nel codice generatore — da rivedere se serve anche in UI già in questa fase).
+- **Istanze vere** (`meshId` condiviso tra più oggetti): il modello dati le supporta ma non c'è ancora un comando "crea istanza" distinto da "duplica".
+- **Selezione multipla nel viewport**: si seleziona solo dalla gerarchia (clic, clic+Ctrl/Shift per multi-selezione); non c'è ancora picking 3D nel viewport (arriva in Fase 3 con M-02/M-03).
+- **Blocco (`locked`) non impedisce la modifica delle proprietà**: impedisce solo la cancellazione da tastiera; il pannello proprietà non disabilita ancora i campi per un oggetto bloccato.
+- `EditableMesh` usa array JS dinamici, non ancora gli array tipizzati a capacità fissa con free-list previsti dal PRD per la struttura finale: non serve finché non esistono operazioni che cancellano elementi (Fase 4), ma andrà rifattorizzato allora.
+- Non ancora verificato su Windows reale (vedi nota di Fase 1, ancora valida).
 
 ## Rischi osservati
 
-- In ambiente di test headless con GPU software, `THREE.GridHelper` mostrava artefatti di rendering (linee vicine alla camera non disegnate) ad alcune angolazioni; risolto lato robustezza con `frustumCulled = false`, ma va comunque riverificato visivamente su un WebView2 reale in Fase 1 quando sarà disponibile una macchina Windows.
-- L'installer NSIS non è stato ancora prodotto/eseguito: la pipeline CI (`release.yml`) lo farà al primo tag `v*`, ma non è stata ancora verificata con un'esecuzione reale.
+- Nessun nuovo rischio rilevante in questa fase oltre a quelli già in nota (Fase 1: verifica su Windows reale non ancora fatta).
 
-## Prossimi passi (Fase 2)
+## Prossimi passi (Fase 3)
 
-Kernel half-edge, primitive parametriche (cubo/cilindro/sfera/piano/cono/toro), gerarchia oggetti, pannello proprietà, undo/redo (M-01, M-10, M-12, M-13, F-04, F-05).
+Modalità di selezione (oggetto/vertice/spigolo/faccia, tasti 1-4), selezione multipla/a riquadro/per loop/collegati, trasformazioni con gizmo e vincolo di asse, snap alla griglia (M-02, M-03, M-04, F-06).
