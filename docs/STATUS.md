@@ -1,31 +1,38 @@
 # Stato del progetto
 
-Aggiornato alla fine della **Fase 5** (loop cut, bevel, suddividi).
+Aggiornato alla fine della **Fase 6** (materiali, texture, salvataggio progetto).
 
 ## Fatto in questa fase
 
 | Requisito PRD | Stato |
 | --- | --- |
-| M-07 Loop cut | ✅ (Ctrl+R su uno spigolo selezionato) |
-| M-07 Bevel di spigoli | ✅ semplificato a 1 segmento (Ctrl+B); N segmenti e chiusura a n-gon multi-spigolo non ancora fatti |
-| M-07 Suddividi | ⚠️ funzione pronta e testata (`geometry/ops/subdivide`), **non collegata a UI/scorciatoia**; opera sull'intera mesh, non su una selezione |
+| C-01 Materiali PBR base (colore, metallic, roughness, emissione) | ✅ colore/metallic/roughness editabili in UI; emissione presente nel modello dati ma senza controllo UI ancora |
+| C-02 Assegnazione materiale a oggetto intero o a facce selezionate | ✅ (pulsante e tasto M) |
+| C-03 Palette di materiali del progetto riutilizzabile | ✅ (`MaterialsPanel`, lista cliccabile) |
+| C-04 Import texture PNG/JPG come mappa colore | ✅ import file → mappa `baseColor`; normal/roughness map non ancora esposte in UI (il modello dati le prevede) |
+| C-05 Tiling, offset, rotazione texture | ⚠️ tiling esposto in UI; offset e rotazione presenti nel modello dati e applicati al rendering, ma senza controlli UI dedicati ancora |
+| E-01 Formato progetto `.fab`, salvataggio | ✅ salva/apri funzionanti (round-trip verificato); **autosalvataggio non implementato** |
 
-## Correzione importante rispetto alla Fase 3
+## Correzione importante rispetto alla Fase 2
 
-`EditableMesh.edgeLoop()` aveva un bug che lo faceva oscillare tra 2 sole facce invece di percorrere l'intero anello (l'operazione "spigolo opposto" veniva applicata due volte per passo). Non era visibile nei test della Fase 3 perché controllavano solo "almeno un elemento, nessun duplicato" — condizione che il bug soddisfaceva comunque. Corretto con un attraversamento entra/esci pulito; aggiunta anche la copertura per strisce aperte (percorre entrambe le direzioni dallo spigolo di partenza), utile per una riga/colonna di una griglia piana oltre che per un anello chiuso. Nuovi test verificano la dimensione esatta dell'anello, non solo l'assenza di duplicati.
+`EditableMesh.faceMaterial` usava `0` come valore di default per "nessun materiale assegnato" — lo stesso indice del *primo* materiale reale in `materialSlots`. Assegnare un materiale a una singola faccia quindi ricolorava per errore l'intera mesh, perché tutte le altre facce (ancora al valore di default `0`) puntavano allo stesso slot. Corretto usando `-1` come sentinella dedicata; il rendering riserva sempre lo slot 0 del suo array di materiali Three.js al materiale di fallback, spostando di uno gli slot reali. Verificato con test unitari e visivamente in browser.
 
 ## Non ancora fatto / noto mancante
 
-- **Suddividi non ha una scorciatoia** (il PRD non ne specifica una) e opera sull'intera mesh, non su una selezione parziale.
-- **Bevel**: solo 1 segmento, solo spigoli con esattamente 2 facce adiacenti (rifiuta gli spigoli di bordo); il caso "più spigoli bevelati che si incontrano su un vertice" (chiusura a n-gon, dal PRD) non è gestito — con un solo spigolo bevelabile per operazione, non si verifica ancora.
-- **Nessuna anteprima interattiva col mouse** per loop cut (posizione del taglio) o bevel (distanza): entrambi si applicano subito con un valore di default, poi regolabile a mano con gli strumenti della Fase 3.
-- **Coltello (knife) e booleane** (M-11): fuori ambito, P2.
+- **Autosalvataggio**: non implementato (il PRD lo richiede in E-01 insieme al salvataggio manuale).
+- **Salvataggio via Tauri non testato**: solo il percorso web (download/upload del file) è stato eseguito ed è testato; il percorso nativo (dialog/fs di Tauri) non è mai girato in questo ambiente Linux.
+- **Formato mesh su disco**: JSON invece del binario compatto descritto dal PRD (`meshes/<id>.bin`) — più semplice da implementare correttamente, round-trip verificato, ma più verboso su disco.
+- **Normal map e roughness map**: nel modello dati (`MaterialDef.maps`) ma senza controlli UI per importarle separatamente dalla base color.
+- **Offset e rotazione texture**: applicati al rendering ma senza campi numerici in UI (solo il tiling ha un controllo).
+- **Nessuna riduzione texture oltre 4096px** e nessuna stima/avviso del budget VRAM.
+- **Libreria texture con anteprime** (C-06, P1) e **proiezioni UV rapide** (U-02): fuori ambito, rimandate.
+- Import di `.glb`/`.obj` (E-06) ed export FBX (E-02…E-04): arrivano in Fase 7.
 - Non ancora verificato su Windows reale (nota ancora valida dalle fasi precedenti).
 
 ## Rischi osservati
 
-- Il rischio "bevel/loop cut instabili su topologie complesse" segnalato dal PRD si è concretizzato una volta (il bug di `edgeLoop`), scoperto grazie ai test di regressione con conteggi esatti invece di asserzioni generiche. Lezione per le prossime fasi: preferire sempre assert su valori esatti attesi (conteggio facce/spigoli) piuttosto che solo "nessun errore/duplicato", specialmente per algoritmi di attraversamento del grafo half-edge.
+- Nessun nuovo rischio strutturale in questa fase; la scoperta del bug sullo slot materiale di default rafforza la lezione della Fase 5 (preferire assert su valori esatti attesi, non solo "nessun errore").
 
-## Prossimi passi (Fase 6)
+## Prossimi passi (Fase 7)
 
-Materiali PBR, texture, palette di progetto, salvataggio del formato `.fab` (C-01…C-05, E-01).
+UV automatiche (xatlas), editor UV, export `.fbx` (U-01, U-03, U-04, U-06, E-02…E-04) — il traguardo critico del PRD: da qui in poi un prop dovrebbe importarsi correttamente in Unity.

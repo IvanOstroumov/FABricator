@@ -180,8 +180,11 @@ export function Viewport3D() {
       renderer.dispose();
       rendererRef.current = null;
     };
+    // Recreating the whole renderer when `doc` changes identity (i.e. a
+    // project was just opened) is heavy-handed but simple and correct;
+    // it only happens on File > Open, not on ordinary edits.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [doc]);
 
   useEffect(() => {
     rendererRef.current?.setShading(shading);

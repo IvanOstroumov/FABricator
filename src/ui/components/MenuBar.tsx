@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useDocumentStore } from '../store/useDocumentStore';
 import { useSelectionStore } from '../store/useSelectionStore';
 import { createPrimitiveCommand, type PrimitiveKind } from '../../commands/factories';
+import { saveFabFile, openFabFile } from '../../io/fab/io';
+import { useViewStore } from '../store/useViewStore';
 
 const MENUS = ['file', 'edit', 'add', 'select', 'view', 'help'] as const;
 const PRIMITIVES: { kind: PrimitiveKind; label: string }[] = [
@@ -19,6 +21,8 @@ export function MenuBar() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const doc = useDocumentStore((s) => s.doc);
   const run = useDocumentStore((s) => s.run);
+  const markSaved = useDocumentStore((s) => s.markSaved);
+  const loadDocument = useDocumentStore((s) => s.loadDocument);
   const select = useSelectionStore((s) => s.select);
 
   const addPrimitive = (kind: PrimitiveKind) => {
@@ -27,6 +31,25 @@ export function MenuBar() {
     run(cmd);
     select(cmd.createdObjectId);
     setOpenMenu(null);
+  };
+
+  const handleSave = async () => {
+    setOpenMenu(null);
+    const saved = await saveFabFile(doc);
+    if (saved) markSaved('progetto.fab');
+  };
+
+  const handleOpen = async () => {
+    setOpenMenu(null);
+    try {
+      const opened = await openFabFile();
+      if (opened) {
+        loadDocument(opened, 'progetto.fab');
+        select(null);
+      }
+    } catch (err) {
+      useViewStore.getState().setTransformHint(`Errore: ${err instanceof Error ? err.message : 'apertura fallita'}`);
+    }
   };
 
   return (
@@ -40,6 +63,16 @@ export function MenuBar() {
           >
             {t(`menu.${menu}`)}
           </button>
+          {openMenu === menu && menu === 'file' && (
+            <div className="menu-bar__dropdown">
+              <button type="button" onClick={() => void handleOpen()}>
+                Apri…
+              </button>
+              <button type="button" onClick={() => void handleSave()}>
+                Salva (Ctrl+S)
+              </button>
+            </div>
+          )}
           {openMenu === menu && menu === 'add' && (
             <div className="menu-bar__dropdown">
               {PRIMITIVES.map((p) => (

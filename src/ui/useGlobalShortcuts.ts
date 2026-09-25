@@ -10,6 +10,9 @@ import { insetFaces } from '../geometry/ops/inset';
 import { deleteFaces, deleteEdges, deleteVertices } from '../geometry/ops/deleteElements';
 import { loopCut } from '../geometry/ops/loopCut';
 import { bevelEdge } from '../geometry/ops/bevel';
+import { useMaterialStore } from './store/useMaterialStore';
+import { AssignMaterialCommand } from '../commands/AssignMaterialCommand';
+import { saveFabFile } from '../io/fab/io';
 
 function showError(message: string): void {
   useViewStore.getState().setTransformHint(`Errore: ${message}`);
@@ -40,6 +43,13 @@ export function useGlobalShortcuts(): void {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         redo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        void saveFabFile(doc).then((saved) => {
+          if (saved) useDocumentStore.getState().markSaved('progetto.fab');
+        });
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
@@ -94,6 +104,18 @@ export function useGlobalShortcuts(): void {
           } catch (err) {
             showError(err instanceof Error ? err.message : 'Bevel non riuscito');
           }
+        }
+        return;
+      }
+
+      if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey) {
+        const activeMaterialId = useMaterialStore.getState().activeMaterialId;
+        const targetObjectId = mode === 'object' ? activeObject : editingObjectId;
+        const targetObject = targetObjectId ? doc.objects.get(targetObjectId) : null;
+        if (activeMaterialId && targetObject?.meshId) {
+          e.preventDefault();
+          const faceIndices = mode === 'face' && componentSelection.size > 0 ? [...componentSelection] : null;
+          run(new AssignMaterialCommand(targetObject.meshId, activeMaterialId, faceIndices));
         }
         return;
       }

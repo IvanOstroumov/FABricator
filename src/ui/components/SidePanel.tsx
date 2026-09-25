@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { HierarchyPanel } from './HierarchyPanel';
 import { PropertiesPanel } from './PropertiesPanel';
+import { MaterialsPanel } from './MaterialsPanel';
 
 export function SidePanel() {
   const { t } = useTranslation();
@@ -11,10 +12,7 @@ export function SidePanel() {
         <HierarchyPanel />
       </section>
       <PropertiesPanel />
-      <section className="side-panel__section">
-        <h3>{t('panels.materials')}</h3>
-        <p className="side-panel__placeholder">—</p>
-      </section>
+      <MaterialsPanel />
     </div>
   );
 }

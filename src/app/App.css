@@ -272,6 +272,60 @@ button.active {
   padding: 2px 4px;
 }
 
+.materials-panel {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.materials-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.materials-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 2px solid var(--border);
+  padding: 0;
+  cursor: pointer;
+}
+
+.materials-swatch.active {
+  border-color: var(--accent);
+}
+
+.materials-swatch--add {
+  background: var(--bg-2);
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.materials-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.materials-editor .properties-field input[type='range'] {
+  width: 100px;
+}
+
+.materials-editor .properties-field input[type='color'] {
+  width: 40px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: none;
+}
+
+.materials-editor button {
+  align-self: flex-start;
+}
+
 .status-bar {
   display: flex;
   gap: 16px;

@@ -1,5 +1,28 @@
 # Changelog
 
+## [Unreleased] — Fase 6: materiali, texture, salvataggio progetto
+
+### Aggiunto
+
+- `materials/types`: `MaterialDef` (colore/metallic/roughness/emissione/mappe/UV transform) e `TextureAsset`, secondo il modello dati del PRD.
+- `core/Document`: mappe `materials`/`textures`/`textureData` (bytes grezzi delle immagini importate), eventi `materialChanged`/`textureAdded`.
+- **Correzione di un bug reale**: le facce non assegnate usavano di default l'indice di slot `0`, identico al primo materiale reale assegnato — assegnare un materiale a *una* faccia ricolorava per errore l'intera mesh (tutte le altre facce, ancora al valore di default, puntavano allo stesso slot). Corretto usando `-1` come sentinella "nessun materiale" in `EditableMesh.faceMaterial`, con lo slot 0 dell'array di materiali Three.js sempre riservato al materiale di fallback. Verificato sia via test unitari sia dal vivo in browser (assegnazione a una sola faccia del cubo: solo quella cambia colore).
+- `commands/MaterialCommand` (crea/edita materiale, undoable, con merge per modifiche continue tipo gli slider) e `commands/AssignMaterialCommand` (assegna un materiale a un oggetto intero o a una selezione di facce, snapshot before/after di `materialSlots`/`faceMaterial`).
+- `render/MeshSync`: cache `MaterialDef` → `THREE.MeshStandardMaterial` (una istanza per materiale, condivisa tra le mesh che lo referenziano), gruppi di geometria per slot materiale, caricamento texture asincrono (`createImageBitmap`), tiling/offset/rotazione UV applicati su `THREE.Texture`.
+- UI: `MaterialsPanel` — palette del progetto (riquadri colore cliccabili), creazione materiale, editor colore/metallic/roughness, import texture PNG/JPEG da file, tiling texture, pulsante/tasto **M** per assegnare il materiale attivo alla selezione (oggetto intero o facce selezionate).
+- `io/fab/serialize`: serializzazione dell'intero documento (oggetti, mesh, materiali, texture, impostazioni) in un archivio zip (`fflate`) — `manifest.json`, `document.json`, `meshes/<id>.json`, `textures/<id>.<ext>`; validazione della versione di schema al caricamento.
+- `io/fab/io`: salva/apri `.fab` — su Tauri usa dialog/fs nativi, altrimenti (browser di sviluppo, ambiente di test) scarica/carica il file via API web standard, mantenendo lo stesso percorso di codice testabile con Playwright.
+- Scorciatoia Ctrl+S (salva) e voci di menu File > Apri/Salva.
+- Test: Vitest per i comandi materiali e per il round-trip di serializzazione (mesh, materiali, texture, rifiuto di un archivio non valido o di uno schema futuro); Playwright per il flusso completo assegna materiale a una faccia → salva → ricarica la pagina → apri → verifica.
+
+### Note
+
+- **Formato mesh su disco diverge dal PRD**: il PRD descrive `meshes/<id>.bin` (binario compattato); qui si usa `meshes/<id>.json` (posizioni + lista facce con vertici/UV/materiale) per semplicità — funzionalmente equivalente (round-trip esatto, verificato dai test) ma più verboso su disco. Da rivedere se le dimensioni dei file diventeranno un problema.
+- **Salvataggio via Tauri non testato**: il ramo `dialog`/`fs` nativo non è mai stato eseguito in questo ambiente (nessun Windows disponibile); solo il ramo web (download/upload) è verificato.
+- **Nessun autosalvataggio** (il PRD lo richiede insieme al salvataggio manuale in E-01): non implementato in questa fase.
+- **Libreria texture con anteprime (C-06)** e **proiezioni UV rapide (U-02)**: fuori ambito di questa fase (rispettivamente P1, Fase 9).
+- **Nessuna riduzione delle texture oltre 4096 px**: il budget VRAM descritto dal PRD non è ancora applicato all'import.
+
 ## [Unreleased] — Fase 5: loop cut, bevel, suddividi
 
 ### Aggiunto

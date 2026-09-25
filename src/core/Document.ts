@@ -3,6 +3,7 @@ import type { Quat, Vec3 } from './math/types';
 import { IDENTITY_QUAT, vec3 } from './math/types';
 import { EventBus } from './EventBus';
 import type { EditableMesh } from '../geometry/EditableMesh';
+import type { MaterialDef, TextureAsset } from '../materials/types';
 
 export interface Transform {
   position: Vec3;
@@ -39,6 +40,8 @@ export interface DocumentEvents {
   objectRemoved: { id: Id };
   objectChanged: { id: Id; fields: Partial<SceneObject> };
   meshChanged: { meshId: Id; dirty: MeshDirty };
+  materialChanged: { id: Id };
+  textureAdded: { id: Id };
   revisionChanged: { revision: number };
   [key: string]: unknown;
 }
@@ -52,6 +55,10 @@ export class Document {
   readonly events = new EventBus<DocumentEvents>();
   readonly objects = new Map<Id, SceneObject>();
   readonly meshes = new Map<Id, EditableMesh>();
+  readonly materials = new Map<Id, MaterialDef>();
+  readonly textures = new Map<Id, TextureAsset>();
+  /** Raw image bytes for each texture, kept out of the reactive maps above (large, immutable once imported). */
+  readonly textureData = new Map<Id, Uint8Array>();
   readonly settings: DocumentSettings = { gridSize: 0.25, exportTriangleWarning: 10000 };
   private revision = 0;
 
@@ -87,6 +94,32 @@ export class Document {
   notifyMeshChanged(meshId: Id, dirty: MeshDirty): void {
     this.bumpRevision();
     this.events.emit('meshChanged', { meshId, dirty });
+  }
+
+  addMaterial(material: MaterialDef): void {
+    this.materials.set(material.id, material);
+    this.bumpRevision();
+    this.events.emit('materialChanged', { id: material.id });
+  }
+
+  updateMaterial(id: Id, fields: Partial<MaterialDef>): void {
+    const material = this.materials.get(id);
+    if (!material) return;
+    Object.assign(material, fields);
+    this.bumpRevision();
+    this.events.emit('materialChanged', { id });
+  }
+
+  removeMaterial(id: Id): void {
+    this.materials.delete(id);
+    this.bumpRevision();
+  }
+
+  addTexture(texture: TextureAsset, data: Uint8Array): void {
+    this.textures.set(texture.id, texture);
+    this.textureData.set(texture.id, data);
+    this.bumpRevision();
+    this.events.emit('textureAdded', { id: texture.id });
   }
 
   children(parentId: Id | null): SceneObject[] {

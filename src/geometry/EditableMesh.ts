@@ -30,8 +30,8 @@ export class EditableMesh {
   heUv: number[] = []; // flat uv per half-edge (per-corner)
 
   faceHalfEdge: number[] = [];
-  faceMaterial: number[] = [];
-  materialSlots: string[] = [];
+  faceMaterial: number[] = []; // index into materialSlots, or -1 = no material assigned (renders with the default fallback)
+  materialSlots: string[] = []; // MaterialDef ids, in project-palette order
 
   get vertexCount(): number {
     return this.positions.length / 3;
@@ -55,7 +55,7 @@ export class EditableMesh {
    * carry a different UV for each face that touches it, which is exactly
    * what a texture seam needs.
    */
-  addFace(verts: number[], uvs: [number, number][], material = 0): number {
+  addFace(verts: number[], uvs: [number, number][], material = -1): number {
     if (verts.length < 3) {
       throw new Error('addFace requires at least 3 vertices');
     }
