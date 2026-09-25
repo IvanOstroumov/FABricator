@@ -2,10 +2,13 @@ import { create } from 'zustand';
 
 export type ShadingMode = 'solid' | 'wireframe' | 'solid-wireframe' | 'texture';
 export type QuickView = 'front' | 'side' | 'top' | 'perspective';
+export type ViewportTab = 'viewport' | 'uv';
 
 interface ViewState {
   shading: ShadingMode;
   quickView: QuickView;
+  viewportTab: ViewportTab;
+  setViewportTab: (tab: ViewportTab) => void;
   orthographic: boolean;
   snapEnabled: boolean;
   gridSnap: number;
@@ -25,6 +28,8 @@ interface ViewState {
 export const useViewStore = create<ViewState>((set) => ({
   shading: 'solid',
   quickView: 'perspective',
+  viewportTab: 'viewport',
+  setViewportTab: (tab) => set({ viewportTab: tab }),
   orthographic: false,
   snapEnabled: false,
   gridSnap: 0.25,

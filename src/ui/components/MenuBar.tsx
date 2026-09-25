@@ -4,6 +4,8 @@ import { useDocumentStore } from '../store/useDocumentStore';
 import { useSelectionStore } from '../store/useSelectionStore';
 import { createPrimitiveCommand, type PrimitiveKind } from '../../commands/factories';
 import { saveFabFile, openFabFile } from '../../io/fab/io';
+import { saveFbxFile } from '../../io/fbx/io';
+import { buildExportReport } from '../../io/fbx/export';
 import { useViewStore } from '../store/useViewStore';
 
 const MENUS = ['file', 'edit', 'add', 'select', 'view', 'help'] as const;
@@ -24,6 +26,7 @@ export function MenuBar() {
   const markSaved = useDocumentStore((s) => s.markSaved);
   const loadDocument = useDocumentStore((s) => s.loadDocument);
   const select = useSelectionStore((s) => s.select);
+  const activeObject = useSelectionStore((s) => s.activeObject);
 
   const addPrimitive = (kind: PrimitiveKind) => {
     const existingNames = [...doc.objects.values()].map((o) => o.name);
@@ -37,6 +40,20 @@ export function MenuBar() {
     setOpenMenu(null);
     const saved = await saveFabFile(doc);
     if (saved) markSaved('progetto.fab');
+  };
+
+  const handleExportFbx = async () => {
+    setOpenMenu(null);
+    const objectIds = activeObject ? [activeObject] : [...doc.objects.keys()];
+    const report = buildExportReport(doc, objectIds);
+    if (report.warnings.length > 0) {
+      useViewStore.getState().setTransformHint(`Errore: ${report.warnings[0]}`);
+    }
+    await saveFbxFile(doc, objectIds, {
+      scope: activeObject ? 'selection' : 'scene',
+      triangulate: false,
+      pivotMode: 'keep',
+    });
   };
 
   const handleOpen = async () => {
@@ -70,6 +87,9 @@ export function MenuBar() {
               </button>
               <button type="button" onClick={() => void handleSave()}>
                 Salva (Ctrl+S)
+              </button>
+              <button type="button" onClick={() => void handleExportFbx()}>
+                Esporta FBX… (Ctrl+Shift+E)
               </button>
             </div>
           )}

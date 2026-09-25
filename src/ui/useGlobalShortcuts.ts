@@ -13,6 +13,10 @@ import { bevelEdge } from '../geometry/ops/bevel';
 import { useMaterialStore } from './store/useMaterialStore';
 import { AssignMaterialCommand } from '../commands/AssignMaterialCommand';
 import { saveFabFile } from '../io/fab/io';
+import { saveFbxFile } from '../io/fbx/io';
+import { buildExportReport } from '../io/fbx/export';
+import { boxUnwrap } from '../geometry/ops/unwrap';
+import { UvEditCommand } from '../commands/UvEditCommand';
 
 function showError(message: string): void {
   useViewStore.getState().setTransformHint(`Errore: ${message}`);
@@ -43,6 +47,18 @@ export function useGlobalShortcuts(): void {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         redo();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        const objectIds = activeObject ? [activeObject] : [...doc.objects.keys()];
+        const report = buildExportReport(doc, objectIds);
+        if (report.warnings.length > 0) showError(report.warnings[0]);
+        void saveFbxFile(doc, objectIds, {
+          scope: activeObject ? 'selection' : 'scene',
+          triangulate: false,
+          pivotMode: 'keep',
+        });
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -104,6 +120,19 @@ export function useGlobalShortcuts(): void {
           } catch (err) {
             showError(err instanceof Error ? err.message : 'Bevel non riuscito');
           }
+        }
+        return;
+      }
+
+      if (e.key.toLowerCase() === 'u' && !e.ctrlKey && !e.metaKey) {
+        const targetObjectId = mode === 'object' ? activeObject : editingObjectId;
+        const targetObject = targetObjectId ? doc.objects.get(targetObjectId) : null;
+        const targetMesh = targetObject?.meshId ? doc.meshes.get(targetObject.meshId) : null;
+        if (targetObject?.meshId && targetMesh) {
+          e.preventDefault();
+          const faceIndices = mode === 'face' && componentSelection.size > 0 ? [...componentSelection] : undefined;
+          const after = boxUnwrap(targetMesh, faceIndices);
+          run(new UvEditCommand('Unwrap automatico', targetObject.meshId, targetMesh.heUv, after));
         }
         return;
       }

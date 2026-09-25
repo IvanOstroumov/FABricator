@@ -68,6 +68,10 @@ export class Renderer {
     this.meshSync.setShading(mode);
   }
 
+  setCheckerboard(enabled: boolean): void {
+    this.meshSync.setCheckerboard(enabled);
+  }
+
   setQuickView(view: QuickView): void {
     this.cameraController.setQuickView(view);
     this.requestRender();

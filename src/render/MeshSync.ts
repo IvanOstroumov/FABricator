@@ -4,6 +4,7 @@ import type { EditableMesh } from '../geometry/EditableMesh';
 import type { Id } from '../core/Id';
 import type { MaterialDef } from '../materials/types';
 import { triangulateFace } from '../geometry/triangulate';
+import { createCheckerTexture } from './checkerTexture';
 import type { ShadingMode } from '../ui/store/useViewStore';
 
 export interface Entry {
@@ -97,6 +98,8 @@ export class MeshSync {
   private wireframeMaterial = new THREE.LineBasicMaterial({ color: 0x111111 });
   private materialCache = new Map<Id, THREE.MeshStandardMaterial>();
   private textureCache = new Map<Id, THREE.Texture>();
+  private checkerTexture: THREE.Texture | null = null;
+  private checkerboardEnabled = false;
   private shading: ShadingMode = 'solid';
   private unsubscribers: (() => void)[] = [];
   private doc: Document;
@@ -140,6 +143,17 @@ export class MeshSync {
     this.onChange();
   }
 
+  /** Overrides every material's map with a checkerboard, to spot UV stretching (U-06). */
+  setCheckerboard(enabled: boolean): void {
+    this.checkerboardEnabled = enabled;
+    this.applyMaterialDef(this.material, null);
+    for (const [id, mat] of this.materialCache) {
+      const def = this.doc.materials.get(id);
+      if (def) this.applyMaterialDef(mat, def);
+    }
+    this.onChange();
+  }
+
   dispose(): void {
     this.unsubscribers.forEach((unsub) => unsub());
     this.entries.forEach(({ mesh, wireframe }) => {
@@ -150,6 +164,7 @@ export class MeshSync {
     this.wireframeMaterial.dispose();
     this.materialCache.forEach((m) => m.dispose());
     this.textureCache.forEach((t) => t.dispose());
+    this.checkerTexture?.dispose();
   }
 
   private syncByMeshId(meshId: string): void {
@@ -177,7 +192,21 @@ export class MeshSync {
     return mat;
   }
 
-  private applyMaterialDef(mat: THREE.MeshStandardMaterial, def: MaterialDef): void {
+  private applyMaterialDef(mat: THREE.MeshStandardMaterial, def: MaterialDef | null): void {
+    if (this.checkerboardEnabled) {
+      if (!this.checkerTexture) this.checkerTexture = createCheckerTexture();
+      mat.map = this.checkerTexture;
+      mat.color.setRGB(1, 1, 1);
+      mat.opacity = 1;
+      mat.transparent = false;
+      mat.needsUpdate = true;
+      return;
+    }
+    if (!def) {
+      mat.map = null;
+      mat.needsUpdate = true;
+      return;
+    }
     mat.color.setRGB(def.baseColor[0], def.baseColor[1], def.baseColor[2]);
     mat.opacity = def.baseColor[3];
     mat.transparent = def.baseColor[3] < 1;

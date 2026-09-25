@@ -1,38 +1,40 @@
 # Stato del progetto
 
-Aggiornato alla fine della **Fase 6** (materiali, texture, salvataggio progetto).
+Aggiornato alla fine della **Fase 7** — il traguardo critico del PRD (UV automatiche, editor UV, export FBX).
 
 ## Fatto in questa fase
 
 | Requisito PRD | Stato |
 | --- | --- |
-| C-01 Materiali PBR base (colore, metallic, roughness, emissione) | ✅ colore/metallic/roughness editabili in UI; emissione presente nel modello dati ma senza controllo UI ancora |
-| C-02 Assegnazione materiale a oggetto intero o a facce selezionate | ✅ (pulsante e tasto M) |
-| C-03 Palette di materiali del progetto riutilizzabile | ✅ (`MaterialsPanel`, lista cliccabile) |
-| C-04 Import texture PNG/JPG come mappa colore | ✅ import file → mappa `baseColor`; normal/roughness map non ancora esposte in UI (il modello dati le prevede) |
-| C-05 Tiling, offset, rotazione texture | ⚠️ tiling esposto in UI; offset e rotazione presenti nel modello dati e applicati al rendering, ma senza controlli UI dedicati ancora |
-| E-01 Formato progetto `.fab`, salvataggio | ✅ salva/apri funzionanti (round-trip verificato); **autosalvataggio non implementato** |
+| U-01 Unwrap automatico | ⚠️ funzionante ma con proiezione a scatola invece di xatlas (nessun chart-packing/impacchettamento isole) |
+| U-03 Editor UV affiancato al viewport | ⚠️ visualizzazione (layout + scacchiera come sfondo); non ancora editabile |
+| U-04 Seleziona/sposta/ruota/scala isole e vertici nell'editor UV | ❌ non fatto in questa fase |
+| U-06 Texture a scacchiera di controllo | ✅ |
+| E-02 Export .fbx di oggetto selezionato o scena | ✅ |
+| E-03 Export con unità in metri, Y-up, triangolazione opzionale, normali e UV incluse | ✅ |
+| E-04 Pivot modificabile prima dell'export (centro, base, mantieni) | ✅ |
 
-## Correzione importante rispetto alla Fase 2
+## Il criterio di accettazione della fase non è completamente verificabile qui
 
-`EditableMesh.faceMaterial` usava `0` come valore di default per "nessun materiale assegnato" — lo stesso indice del *primo* materiale reale in `materialSlots`. Assegnare un materiale a una singola faccia quindi ricolorava per errore l'intera mesh, perché tutte le altre facce (ancora al valore di default `0`) puntavano allo stesso slot. Corretto usando `-1` come sentinella dedicata; il rendering riserva sempre lo slot 0 del suo array di materiali Three.js al materiale di fallback, spostando di uno gli slot reali. Verificato con test unitari e visivamente in browser.
+Il PRD chiude la Fase 7 con: *"Un prop texturizzato esportato si importa in Unity 2022 LTS e Unity 6 con scala, orientamento e materiali corretti."* Questo ambiente non ha Windows né Unity, quindi **l'unica verifica possibile è stata indiretta**: ho scritto un writer FBX binario 7.4 da zero e l'ho validato re-importando ogni file esportato con `assimpjs` (la stessa libreria che il PRD prevede per la CI) — sia nei test automatici sia da un file scaricato dall'app vera in un browser, confermando conteggi di vertici/facce/materiali corretti e nessun errore di parsing. Assimp e Unity non sono lo stesso importer, quindi **questo non sostituisce una verifica manuale in Unity**, ma è una prova concreta che il file è un FBX 7.4 binario strutturalmente valido, non solo "probabilmente corretto per costruzione".
+
+**Prossimo passo umano consigliato**: aprire un file esportato in Unity 2022 LTS (o Unity 6) e controllare scala (1 unità = 1 m), orientamento (Y-up, nessuna rotazione indesiderata) e materiali, secondo la checklist del PRD.
 
 ## Non ancora fatto / noto mancante
 
-- **Autosalvataggio**: non implementato (il PRD lo richiede in E-01 insieme al salvataggio manuale).
-- **Salvataggio via Tauri non testato**: solo il percorso web (download/upload del file) è stato eseguito ed è testato; il percorso nativo (dialog/fs di Tauri) non è mai girato in questo ambiente Linux.
-- **Formato mesh su disco**: JSON invece del binario compatto descritto dal PRD (`meshes/<id>.bin`) — più semplice da implementare correttamente, round-trip verificato, ma più verboso su disco.
-- **Normal map e roughness map**: nel modello dati (`MaterialDef.maps`) ma senza controlli UI per importarle separatamente dalla base color.
-- **Offset e rotazione texture**: applicati al rendering ma senza campi numerici in UI (solo il tiling ha un controllo).
-- **Nessuna riduzione texture oltre 4096px** e nessuna stima/avviso del budget VRAM.
-- **Libreria texture con anteprime** (C-06, P1) e **proiezioni UV rapide** (U-02): fuori ambito, rimandate.
-- Import di `.glb`/`.obj` (E-06) ed export FBX (E-02…E-04): arrivano in Fase 7.
-- Non ancora verificato su Windows reale (nota ancora valida dalle fasi precedenti).
+- **UV automatiche senza xatlas**: proiezione a scatola per-faccia, senza impacchettamento delle isole (si sovrappongono tutte in 0..1). Buona per texture tileable/trim-sheet, non per una texture unica dedicata al prop.
+- **Editor UV di sola visualizzazione**: nessuna selezione/spostamento/rotazione/scala di isole o vertici (U-04); nessuna marcatura di seam manuali (U-05, Fase 9).
+- **Export FBX senza texture incluse**: materiali con colore/metallic/roughness/emissione, ma senza nodi `Texture`/`Video` collegati ai file immagine — il percorso web (unico file scaricato) non può scrivere anche i PNG a fianco; da rivedere quando l'export gira nell'app desktop con accesso al filesystem.
+- **Gerarchia non esportata**: ogni oggetto è collegato direttamente alla radice FBX; i gruppi non producono nodi "Null" annidati.
+- **UV per-poligono `Direct` invece di `IndexToDirect`**: scelta più semplice del PRD, verificata valida con assimp ma più pesante su disco per mesh con molte facce condividenti la stessa UV.
+- **Report di export (E-05)**: solo la funzione `buildExportReport` (conteggi e avvisi), senza un dialog UI che lo mostri prima di esportare.
+- Import `.glb`/`.obj` (E-06): non fatto, non previsto prima della Fase 10.
+- Non ancora verificato su Windows reale (nota ancora valida dalle fasi precedenti) — e, come sopra, non ancora verificato in Unity.
 
 ## Rischi osservati
 
-- Nessun nuovo rischio strutturale in questa fase; la scoperta del bug sullo slot materiale di default rafforza la lezione della Fase 5 (preferire assert su valori esatti attesi, non solo "nessun errore").
+- Il rischio "writer FBX con errori di formato" segnalato dal PRD è stato mitigato concretamente in questa fase: la validazione con `assimpjs` ha permesso di scoprire e correggere subito i problemi di struttura (a differenza di bug di topologia delle fasi precedenti, qui non ne sono emersi — il writer ha funzionato al primo tentativo strutturalmente valido, probabilmente perché il formato binario è stato seguito byte per byte dalla specifica del PRD). Resta comunque il rischio che Unity sia più severo o diverso da assimp su dettagli specifici (es. convenzioni di connessione, versioni dei nodi) — da confermare con un vero test manuale.
 
-## Prossimi passi (Fase 7)
+## Prossimi passi (Fase 8)
 
-UV automatiche (xatlas), editor UV, export `.fbx` (U-01, U-03, U-04, U-06, E-02…E-04) — il traguardo critico del PRD: da qui in poi un prop dovrebbe importarsi correttamente in Unity.
+Mirror non distruttivo, merge vertici, riempi buchi, bridge tra loop (M-08, M-09).

@@ -134,9 +134,77 @@ button.active {
 
 .workspace__viewport-column {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   min-width: 0;
   min-height: 0;
+}
+
+.viewport-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.viewport-tabs button {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 6px 12px;
+  border-bottom: 2px solid transparent;
+}
+
+.viewport-tabs button.active {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+.uv-editor {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  overflow: auto;
+  background: var(--bg-0);
+}
+
+.uv-editor__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.uv-editor__canvas {
+  justify-self: center;
+  align-self: center;
+  background: #222;
+}
+
+.uv-editor__canvas--checker {
+  background-image:
+    linear-gradient(45deg, #444 25%, transparent 25%),
+    linear-gradient(-45deg, #444 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #444 75%),
+    linear-gradient(-45deg, transparent 75%, #444 75%);
+  background-size: 32px 32px;
+  background-position:
+    0 0,
+    0 16px,
+    16px -16px,
+    -16px 0;
+}
+
+.uv-editor__bounds {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 0.003;
+}
+
+.uv-editor__edge {
+  stroke: #ffcc66;
+  stroke-width: 0.0015;
 }
 
 .viewport-toolbar {

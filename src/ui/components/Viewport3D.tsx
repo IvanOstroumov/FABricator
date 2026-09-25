@@ -195,6 +195,11 @@ export function Viewport3D() {
     rendererRef.current?.setQuickView(quickView);
   }, [quickView]);
 
+  const checkerboard = useViewStore((s) => s.checkerboard);
+  useEffect(() => {
+    rendererRef.current?.setCheckerboard(checkerboard);
+  }, [checkerboard]);
+
   const selectMode = useSelectionStore((s) => s.mode);
   const editingObjectId = useSelectionStore((s) => s.editingObjectId);
   const componentSelection = useSelectionStore((s) => s.componentSelection);

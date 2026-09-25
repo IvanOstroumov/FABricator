@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased] — Fase 7: UV automatiche, editor UV, export FBX (traguardo critico)
+
+### Aggiunto
+
+- **`io/fbx/FbxBinaryWriter`**: writer FBX binario 7.4 scritto da zero (header a 27 byte, nodi con `EndOffset`/`NumProperties`/`PropertyListLen`, proprietà tipizzate incluse le array `d`/`i`/`l` con compressione zlib oltre 128 elementi via `fflate`, record nullo di 13 byte, footer). **Validato realmente**, non solo per struttura: `assimpjs` (la stessa libreria che il PRD prevede per la CI) ha ri-letto con successo ogni file esportato durante lo sviluppo, sia nei test automatici sia da un file scaricato dall'app vera in un browser.
+- `io/fbx/FbxSceneBuilder`: costruisce l'albero di nodi FBX (GlobalSettings con assi Y-up e `UnitScaleFactor=100`, Geometry con normali/UV per-poligono, Model con Translation/Rotation/Scaling, Material con colore/opacità/emissione/shininess derivata da roughness) e le connessioni geometria→modello, materiale→modello, modello→radice.
+- `io/fbx/export`: `exportToFbx` (scena intera o oggetto selezionato, triangolazione opzionale, pivot centro/base/mantieni) e `buildExportReport` (conteggio triangoli, mesh, materiali, avvisi per facce degeneri o senza materiale — versione minima di E-05).
+- Scorciatoia Ctrl+Shift+E ed export dal menu File; scarica un `.fbx` nel browser di sviluppo, userà il dialog nativo Tauri sull'app desktop.
+- `geometry/ops/unwrap.boxUnwrap`: unwrap automatico per proiezione a scatola (proietta ogni faccia sul piano perpendicolare all'asse dominante della sua normale) — attivabile con il tasto **U**, sull'intero oggetto o sulla selezione di facce.
+- `render/checkerTexture` + `MeshSync.setCheckerboard`: texture di controllo a scacchiera procedurale (1024 px), sostituisce la mappa di ogni materiale quando attivata dal pulsante "Checkerboard" già presente nella barra viewport.
+- `UvEditorPanel`: scheda "Editor UV" affiancata al viewport (si passa da una all'altra con due schede in cima, il renderer 3D resta montato per non perdere lo stato della camera); mostra il layout UV dell'oggetto attivo come SVG sopra la scacchiera.
+- Test: Vitest per `boxUnwrap` e — soprattutto — per l'export FBX, dove ogni asserzione passa attraverso un vero **re-import con `assimpjs`** (conteggio vertici/facce/materiali sul file effettivamente prodotto, non sulla sola struttura del writer); Playwright per unwrap→editor UV→annulla ed esporta FBX dal menu File.
+
+### Note
+
+- **UV automatiche non usano xatlas**: il PRD prevede `xatlas-wasm` per un vero chart-packing; qui si usa una proiezione a scatola per-faccia (nessun impacchettamento delle isole, si sovrappongono tutte nello spazio 0..1). Scelta per limitare la complessità di integrazione in questa fase; da rivedere quando servirà una vera unwrap ottimizzata per una texture reale (oggi funziona bene soprattutto per texture "trim sheet"/tileable).
+- **Editor UV è di sola visualizzazione**: mostra il layout (con scacchiera) ma non permette ancora di selezionare/spostare/ruotare/scalare le isole (U-04) né di marcare seam manuali (U-05, Fase 9). Vedi `docs/STATUS.md`.
+- **Export FBX senza texture**: i materiali esportano colore/metallic/roughness/emissione ma non ancora i nodi `Texture`/`Video` con i file immagine collegati — il percorso web (download di un solo file) non può scrivere file "fratelli" nella stessa cartella; da rivedere quando l'export girerà nell'app desktop con accesso al filesystem.
+- **Gerarchia non esportata**: ogni oggetto viene collegato direttamente alla radice della scena FBX; i gruppi (`SceneObject.parentId`) non producono ancora nodi "Null" annidati nell'export.
+- **UV per-poligono con `Direct` invece di `IndexToDirect`**: il PRD specifica `IndexToDirect` per le UV (con un array di indici separato); qui si scrive un valore diretto per ogni corner (`ByPolygonVertex/Direct`), più semplice e comunque valido per gli importer (verificato con assimp) — leggermente più pesante su disco per mesh con molte facce che condividono la stessa UV.
+- **Nessuna verifica reale in Unity**: la validazione è tramite `assimpjs` (stesso strumento della pipeline CI del PRD); l'import effettivo in Unity 2022 LTS/Unity 6 richiesto come criterio di accettazione della Fase 7 non è stato possibile in questo ambiente (nessun Windows/Unity disponibili) e resta da fare manualmente.
+
 ## [Unreleased] — Fase 6: materiali, texture, salvataggio progetto
 
 ### Aggiunto
