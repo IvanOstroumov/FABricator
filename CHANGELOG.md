@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased] — Fase 8: mirror, merge, riempi buchi, bridge
+
+### Aggiunto
+
+- `geometry/ops/merge`: `mergeAtCenter`, `mergeAtFirst` (unisce un insieme di vertici scelto dall'utente) e `mergeByDistance` (salda ogni coppia di vertici entro una soglia, globale sulla mesh).
+- `geometry/ops/borderLoop.traceBorderLoop`: attraversa il bordo di un buco (spigoli con `heTwin=-1`) partendo da un half-edge, per riuso da `fill` e `bridge`.
+- `geometry/ops/fill.fillHole`: chiude un buco con un singolo n-gon che segue il bordo.
+- `geometry/ops/bridge.bridgeLoops`: collega due bordi con lo stesso numero di vertici con un anello di quad, allineando la rotazione iniziale per minimizzare la distanza totale tra vertici corrispondenti; rifiuta con un errore se i due bordi hanno un numero diverso di vertici.
+- `geometry/ops/mirror.applyMirror`: specchio "applicato" — mesh originale più copia riflessa e rewind (per mantenere la normale rivolta verso l'esterno), con saldatura opzionale lungo il piano di specchiatura.
+- `SceneObject.mirror`: anteprima non distruttiva dello specchio (asse, saldatura, distanza) — `render/MeshSync` aggiunge una mesh figlia con scala -1 sull'asse scelto, senza toccare la geometria reale finché non si preme "Applica" (`commands/ApplyMirrorCommand`, che sostituisce la mesh e svuota `mirror` in un solo comando annullabile).
+- UI: sezione "Specchio" nel pannello Proprietà (attiva/asse/saldatura/Applica); voci "Unisci al centro/al primo/per distanza", "Riempi buco", "Bridge" nel menu Modifica, attive in base alla modalità di selezione corrente.
+- Test: Vitest per merge/fill/bridge/mirror (inclusi i casi di rifiuto: bordi di lunghezza diversa); Playwright per specchio→applica→annulla (conteggio triangoli 12→24→12) e cancella faccia→riempi buco dal menu Modifica (12→10→12).
+
+### Note
+
+- **Nessuna scorciatoia da tastiera dedicata** per merge/riempi/bridge (il PRD non ne specifica nella tabella): raggiungibili solo dal menu Modifica.
+- **Bridge non gestisce l'inversione**: la ricerca dell'allineamento prova solo le rotazioni del secondo anello, non anche il verso opposto; per bordi con orientamento non compatibile il risultato può avere normali invertite sulla striscia di quad generata.
+- **Anteprima dello specchio nello spazio locale dell'oggetto** (come in Blender): su una mesh già simmetrica rispetto alla propria origine locale, l'anteprima si sovrappone esattamente all'originale — comportamento corretto, non un difetto, ma può sembrare "non fare nulla" finché non si guarda il conteggio triangoli dopo "Applica" o non si usa su una mesh asimmetrica rispetto alla propria origine.
+
 ## [Unreleased] — Fase 7: UV automatiche, editor UV, export FBX (traguardo critico)
 
 ### Aggiunto

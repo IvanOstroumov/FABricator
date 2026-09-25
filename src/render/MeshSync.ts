@@ -12,6 +12,7 @@ export interface Entry {
   wireframe: THREE.LineSegments;
   editableMesh: EditableMesh;
   triangleFaceMap: number[];
+  mirrorPreview: THREE.Mesh | null;
 }
 
 interface BuiltGeometry {
@@ -268,7 +269,7 @@ export class MeshSync {
       const wireframe = new THREE.LineSegments(new THREE.WireframeGeometry(geometry), this.wireframeMaterial);
       wireframe.visible = this.shading === 'solid-wireframe';
       mesh.add(wireframe);
-      entry = { mesh, wireframe, editableMesh, triangleFaceMap };
+      entry = { mesh, wireframe, editableMesh, triangleFaceMap, mirrorPreview: null };
       this.entries.set(id, entry);
       this.group.add(mesh);
     } else {
@@ -282,7 +283,31 @@ export class MeshSync {
     }
     entry.mesh.name = object.name;
     applyTransform(entry.mesh, object);
+    this.syncMirrorPreview(entry, object);
     this.onChange();
+  }
+
+  /** Non-destructive mirror preview (`SceneObject.mirror`): a child mesh sharing geometry/material, scaled -1 on the mirror axis. "Applica" (see `ApplyMirrorCommand`) bakes it into real geometry instead. */
+  private syncMirrorPreview(entry: Entry, object: SceneObject): void {
+    if (!object.mirror) {
+      if (entry.mirrorPreview) {
+        entry.mesh.remove(entry.mirrorPreview);
+        entry.mirrorPreview = null;
+      }
+      return;
+    }
+    if (!entry.mirrorPreview) {
+      entry.mirrorPreview = new THREE.Mesh(entry.mesh.geometry, entry.mesh.material);
+      entry.mesh.add(entry.mirrorPreview);
+    } else {
+      entry.mirrorPreview.geometry = entry.mesh.geometry;
+      entry.mirrorPreview.material = entry.mesh.material;
+    }
+    entry.mirrorPreview.scale.set(
+      object.mirror.axis === 'x' ? -1 : 1,
+      object.mirror.axis === 'y' ? -1 : 1,
+      object.mirror.axis === 'z' ? -1 : 1,
+    );
   }
 
   private removeObject(id: string): void {

@@ -26,6 +26,8 @@ export interface SceneObject {
   locked: boolean;
   meshId?: Id;
   shading: { smooth: boolean; autoSmoothAngleDeg: number };
+  /** Non-destructive mirror preview across a local axis; `applyMirror` (Fase 8) bakes it into real geometry. */
+  mirror?: { axis: 'x' | 'y' | 'z'; merge: boolean; mergeDistance: number };
 }
 
 export interface DocumentSettings {

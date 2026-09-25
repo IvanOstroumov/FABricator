@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useDocumentStore } from '../store/useDocumentStore';
 import { useSelectionStore } from '../store/useSelectionStore';
 import { PropertyCommand } from '../../commands/PropertyCommand';
+import { ApplyMirrorCommand } from '../../commands/ApplyMirrorCommand';
+import { applyMirror, type MirrorAxis } from '../../geometry/ops/mirror';
 import type { Transform } from '../../core/Document';
 
 const RAD2DEG = 180 / Math.PI;
@@ -76,6 +78,24 @@ export function PropertiesPanel() {
     run(new PropertyCommand('Rotazione', object.id, { transform }));
   };
 
+  const mesh = object.meshId ? doc.meshes.get(object.meshId) : null;
+  const toggleMirror = (enabled: boolean) => {
+    run(
+      new PropertyCommand('Specchio', object.id, {
+        mirror: enabled ? { axis: 'x', merge: true, mergeDistance: 0.001 } : undefined,
+      }),
+    );
+  };
+  const setMirrorField = (fields: Partial<NonNullable<typeof object.mirror>>) => {
+    if (!object.mirror) return;
+    run(new PropertyCommand('Specchio', object.id, { mirror: { ...object.mirror, ...fields } }));
+  };
+  const applyMirrorNow = () => {
+    if (!object.mirror || !object.meshId || !mesh) return;
+    const after = applyMirror(mesh, object.mirror.axis, object.mirror.merge, object.mirror.mergeDistance);
+    run(new ApplyMirrorCommand(object.id, object.meshId, mesh, after, object.mirror));
+  };
+
   return (
     <div className="side-panel__section">
       <h3>{t('panels.properties')}</h3>
@@ -97,6 +117,41 @@ export function PropertiesPanel() {
         <NumberField label="Y" value={object.transform.scale.y} onCommit={(v) => setScale('y', v)} />
         <NumberField label="Z" value={object.transform.scale.z} onCommit={(v) => setScale('z', v)} />
       </div>
+      {object.kind === 'mesh' && (
+        <div className="properties-group properties-group--mirror">
+          <span className="properties-group__label">Specchio</span>
+          <label className="properties-field">
+            <input type="checkbox" checked={!!object.mirror} onChange={(e) => toggleMirror(e.target.checked)} />
+            <span>Attivo</span>
+          </label>
+          {object.mirror && (
+            <>
+              <label className="properties-field">
+                <span>Asse</span>
+                <select
+                  value={object.mirror.axis}
+                  onChange={(e) => setMirrorField({ axis: e.target.value as MirrorAxis })}
+                >
+                  <option value="x">X</option>
+                  <option value="y">Y</option>
+                  <option value="z">Z</option>
+                </select>
+              </label>
+              <label className="properties-field">
+                <input
+                  type="checkbox"
+                  checked={object.mirror.merge}
+                  onChange={(e) => setMirrorField({ merge: e.target.checked })}
+                />
+                <span>Salda al centro</span>
+              </label>
+              <button type="button" onClick={applyMirrorNow}>
+                Applica
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
