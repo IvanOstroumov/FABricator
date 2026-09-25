@@ -1,5 +1,28 @@
 # Changelog
 
+## [Unreleased] — Fase 3: selezione vertice/spigolo/faccia, trasformo modale, snap
+
+### Aggiunto
+
+- `geometry/EditableMesh`: `edges()` (enumerazione univoca), `edgeLoop()` (attraversamento per quad, per M-03), `connectedFaces()` (BFS via twin, per "seleziona collegati"/L), `vertexFaces()`, `setVertexPosition()`. `addFace` ora richiede una UV esplicita per corner invece di una UV "per vertice": era una scorciatoia della Fase 2 che impediva la condivisione dei vertici tra facce adiacenti (ogni faccia aveva i propri vertici, quindi i twin non si risolvevano mai e l'intera mesh risultava "non connessa").
+- **Correzione dei generatori di primitive** (`geometry/ops/primitives`): riscritti per condividere i vertici tra facce adiacenti (vertici del cubo, anelli del cilindro/sfera/toro, apice unico per cono/poli sfera), così la topologia half-edge è realmente connessa; le UV restano corrette ai seam grazie alla UV per-corner (`heUv`), non per-vertice.
+- `selection/Selection`: tipo `SelectMode`, `expandSelectionToVertices` (vertice/spigolo/faccia → indici di vertice univoci).
+- `render/Picking`: selezione vertice/spigolo per prossimità in spazio schermo (10 px / 6 px, come da PRD), selezione faccia via raycasting sulla mesh triangolata con mappa triangolo→faccia.
+- `render/SelectionOverlay`: evidenzia vertici/spigoli/facce selezionati (arancione) sopra quelli non selezionati (bianco/grigio), come figlio del mesh dell'oggetto in modifica.
+- `tools/ModalTransform`: trasformazione modale in stile Blender (sposta/ruota/scala) con vincolo di asse X/Y/Z, inserimento numerico, snap a griglia/incrementi di rotazione, conferma (clic/Invio) o annulla (clic destro/Esc); opera sia sul transform dell'oggetto (modalità oggetto) sia direttamente sulle posizioni dei vertici selezionati (modalità vertice/spigolo/faccia), pivot al centroide della selezione.
+- `commands/MeshEditCommand`: snapshot before/after dell'intero array di posizioni per un edit di componenti, undoable.
+- UI: pulsanti modalità 1-4 nella barra viewport; tasti 1-4 per cambiare modalità, G per spostare, Maiusc+E per ruotare, Maiusc+R per scalare (tutti col focus sul viewport); barra di stato con conteggio triangoli/selezione reali e suggerimento contestuale durante la trasformazione modale.
+- Test: Vitest per `edges()`/`edgeLoop()`/`connectedFaces()`/`expandSelectionToVertices` e per `MeshEditCommand` (undo/redo); Playwright per il flusso seleziona faccia → sposta (G) → conferma → annulla.
+
+### Note
+
+- **Picking di vertici/spigoli è O(n) per clic** (proiezione di ogni vertice/spigolo in spazio schermo): adeguato alle mesh delle primitive attuali; il BVH (`three-mesh-bvh`) previsto dal PRD per le mesh grandi resta da integrare quando servirà per prestazioni.
+- **Loop di spigoli semplificato**: `edgeLoop()` attraversa solo quad (bordo opposto via `next(next(h))`), non implementa ancora la regola generale "valenza 4" del PRD per mesh non a griglia.
+- **Scorciatoie modali (G/Maiusc+E/Maiusc+R/1-4) richiedono il focus sul viewport** (come tipico in un editor 3D): un clic su un pulsante della UI sposta il focus e va ricliccato nel viewport prima di usarle. Le scorciatoie globali (Ctrl+Z/Y/D/Canc) restano invece attive ovunque.
+- **Vincolo di asse è globale, non locale all'oggetto**: X/Y/Z durante il trasformo modale vincola sempre agli assi del mondo, non a quelli ruotati dell'oggetto.
+- **Gizmo di trasformazione (Q/W/E/R) non ancora collegato al viewport**: i pulsanti della toolbar cambiano solo lo stato "strumento attivo"; il gizmo visuale (`TransformControls`) resta da integrare — per ora l'unico modo di trasformare è il modale da tastiera (G/Maiusc+E/Maiusc+R), che soddisfa comunque il criterio di accettazione esplicito della Fase 3.
+- Il campo "Blocca" (`locked`) di un oggetto non impedisce ancora la trasformazione modale (solo la cancellazione da tastiera, come in Fase 2).
+
 ## [Unreleased] — Fase 2: kernel half-edge, primitive, gerarchia, undo/redo
 
 ### Aggiunto

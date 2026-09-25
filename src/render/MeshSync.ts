@@ -4,15 +4,18 @@ import type { EditableMesh } from '../geometry/EditableMesh';
 import { triangulateFace } from '../geometry/triangulate';
 import type { ShadingMode } from '../ui/store/useViewStore';
 
-interface Entry {
+export interface Entry {
   mesh: THREE.Mesh;
   wireframe: THREE.LineSegments;
+  editableMesh: EditableMesh;
+  triangleFaceMap: number[];
 }
 
-function buildGeometry(mesh: EditableMesh): THREE.BufferGeometry {
+function buildGeometry(mesh: EditableMesh): { geometry: THREE.BufferGeometry; triangleFaceMap: number[] } {
   const positions: number[] = [];
   const normals: number[] = [];
   const uvs: number[] = [];
+  const triangleFaceMap: number[] = [];
 
   for (let f = 0; f < mesh.faceCount; f++) {
     const verts = mesh.faceVertices(f);
@@ -20,6 +23,7 @@ function buildGeometry(mesh: EditableMesh): THREE.BufferGeometry {
     const normal = mesh.faceNormal(f);
     const triangles = triangulateFace(verts.length);
     for (const [a, b, c] of triangles) {
+      triangleFaceMap.push(f);
       for (const i of [a, b, c]) {
         const p = mesh.vertexPosition(verts[i]);
         positions.push(p.x, p.y, p.z);
@@ -33,7 +37,7 @@ function buildGeometry(mesh: EditableMesh): THREE.BufferGeometry {
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  return geometry;
+  return { geometry, triangleFaceMap };
 }
 
 function applyTransform(target: THREE.Object3D, object: SceneObject): void {
@@ -73,6 +77,14 @@ export class MeshSync {
       doc.events.on('objectRemoved', ({ id }) => this.removeObject(id)),
       doc.events.on('meshChanged', ({ meshId }) => this.syncByMeshId(meshId)),
     );
+  }
+
+  getEntry(objectId: string): Entry | undefined {
+    return this.entries.get(objectId);
+  }
+
+  allEntries(): IterableIterator<[string, Entry]> {
+    return this.entries.entries();
   }
 
   syncAll(): void {
@@ -117,13 +129,13 @@ export class MeshSync {
     if (!editableMesh) return;
 
     let entry = this.entries.get(id);
-    const geometry = buildGeometry(editableMesh);
+    const { geometry, triangleFaceMap } = buildGeometry(editableMesh);
     if (!entry) {
       const mesh = new THREE.Mesh(geometry, this.material);
       const wireframe = new THREE.LineSegments(new THREE.WireframeGeometry(geometry), this.wireframeMaterial);
       wireframe.visible = this.shading === 'solid-wireframe';
       mesh.add(wireframe);
-      entry = { mesh, wireframe };
+      entry = { mesh, wireframe, editableMesh, triangleFaceMap };
       this.entries.set(id, entry);
       this.group.add(mesh);
     } else {
@@ -131,6 +143,8 @@ export class MeshSync {
       entry.mesh.geometry = geometry;
       entry.wireframe.geometry.dispose();
       entry.wireframe.geometry = new THREE.WireframeGeometry(geometry);
+      entry.editableMesh = editableMesh;
+      entry.triangleFaceMap = triangleFaceMap;
     }
     entry.mesh.name = object.name;
     applyTransform(entry.mesh, object);

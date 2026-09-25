@@ -1,5 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import { useViewStore, type ShadingMode, type QuickView } from '../store/useViewStore';
+import { useSelectionStore } from '../store/useSelectionStore';
+import type { SelectMode } from '../../selection/Selection';
+
+const SELECT_MODES: { mode: SelectMode; key: string; shortcut: string }[] = [
+  { mode: 'object', key: 'object', shortcut: '1' },
+  { mode: 'vertex', key: 'vertex', shortcut: '2' },
+  { mode: 'edge', key: 'edge', shortcut: '3' },
+  { mode: 'face', key: 'face', shortcut: '4' },
+];
 
 const SHADING_MODES: ShadingMode[] = ['solid', 'wireframe', 'solid-wireframe', 'texture'];
 const QUICK_VIEWS: { view: QuickView; key: string; shortcut: string }[] = [
@@ -26,9 +35,26 @@ export function ViewportToolbar() {
   const toggleSnap = useViewStore((s) => s.toggleSnap);
   const checkerboard = useViewStore((s) => s.checkerboard);
   const toggleCheckerboard = useViewStore((s) => s.toggleCheckerboard);
+  const selectMode = useSelectionStore((s) => s.mode);
+  const setSelectMode = useSelectionStore((s) => s.setMode);
+  const activeObject = useSelectionStore((s) => s.activeObject);
 
   return (
     <div className="viewport-toolbar">
+      <div className="viewport-toolbar__group">
+        {SELECT_MODES.map(({ mode, key, shortcut }) => (
+          <button
+            key={mode}
+            type="button"
+            className={mode === selectMode ? 'active' : ''}
+            disabled={mode !== 'object' && !activeObject && selectMode === 'object'}
+            onClick={() => setSelectMode(mode)}
+            title={`${t(`viewportToolbar.mode.${key}`)} (${shortcut})`}
+          >
+            {t(`viewportToolbar.mode.${key}`)}
+          </button>
+        ))}
+      </div>
       <div className="viewport-toolbar__group">
         {SHADING_MODES.map((mode) => (
           <button

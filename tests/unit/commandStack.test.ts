@@ -3,6 +3,7 @@ import { Document, identityTransform, type SceneObject } from '../../src/core/Do
 import { CommandStack } from '../../src/commands/CommandStack';
 import { AddObjectCommand } from '../../src/commands/AddObjectCommand';
 import { PropertyCommand } from '../../src/commands/PropertyCommand';
+import { MeshEditCommand } from '../../src/commands/MeshEditCommand';
 import { createCube } from '../../src/geometry/ops/primitives';
 import { createId } from '../../src/core/Id';
 
@@ -50,6 +51,25 @@ describe('commands/CommandStack', () => {
     }
 
     expect(doc.objects.get(object.id)?.name).toBe('Rinominato');
+  });
+
+  it('undoes a component-level mesh edit (vertex move) via MeshEditCommand', () => {
+    const doc = new Document();
+    const stack = new CommandStack(doc);
+    const object = makeCubeObject('Cubo');
+    const mesh = createCube();
+    stack.run(new AddObjectCommand(object, mesh));
+
+    const before = [...mesh.positions];
+    mesh.positions[0] += 5; // simulate a live-preview drag of the first vertex
+    const after = [...mesh.positions];
+    stack.run(new MeshEditCommand('Sposta', object.meshId!, before, after));
+
+    expect(doc.meshes.get(object.meshId!)!.positions[0]).toBeCloseTo(before[0] + 5);
+    stack.undo();
+    expect(doc.meshes.get(object.meshId!)!.positions[0]).toBeCloseTo(before[0]);
+    stack.redo();
+    expect(doc.meshes.get(object.meshId!)!.positions[0]).toBeCloseTo(before[0] + 5);
   });
 
   it('groups multiple commands into a single undo step', () => {

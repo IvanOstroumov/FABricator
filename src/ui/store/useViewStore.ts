@@ -12,6 +12,8 @@ interface ViewState {
   rotationSnapDeg: number;
   checkerboard: boolean;
   fps: number;
+  transformHint: string;
+  setTransformHint: (hint: string) => void;
   setShading: (mode: ShadingMode) => void;
   setQuickView: (view: QuickView) => void;
   toggleOrthographic: () => void;
@@ -29,6 +31,8 @@ export const useViewStore = create<ViewState>((set) => ({
   rotationSnapDeg: 15,
   checkerboard: false,
   fps: 0,
+  transformHint: '',
+  setTransformHint: (hint) => set({ transformHint: hint }),
   setShading: (mode) => set({ shading: mode }),
   setQuickView: (view) =>
     set({ quickView: view, orthographic: view !== 'perspective' }),

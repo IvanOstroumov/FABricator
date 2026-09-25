@@ -78,6 +78,12 @@ export class Document {
     this.events.emit('objectChanged', { id, fields });
   }
 
+  /** Notifies listeners that an object already mutated in place (e.g. a live transform preview) changed. */
+  touchObject(id: Id): void {
+    this.bumpRevision();
+    this.events.emit('objectChanged', { id, fields: {} });
+  }
+
   notifyMeshChanged(meshId: Id, dirty: MeshDirty): void {
     this.bumpRevision();
     this.events.emit('meshChanged', { meshId, dirty });

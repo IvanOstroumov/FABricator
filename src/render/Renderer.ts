@@ -3,7 +3,10 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { CameraController } from './CameraController';
 import { createGrid } from './Grid';
 import { MeshSync } from './MeshSync';
+import { updateSelectionOverlay } from './SelectionOverlay';
+import { pickFace, pickEdge, pickVertex } from './Picking';
 import type { Document } from '../core/Document';
+import type { SelectMode } from '../selection/Selection';
 import type { ShadingMode, QuickView } from '../ui/store/useViewStore';
 
 /**
@@ -72,6 +75,60 @@ export class Renderer {
 
   onFrame(callback: (fps: number) => void): void {
     this.onFps = callback;
+  }
+
+  setComponentSelection(objectId: string | null, mode: SelectMode, selected: ReadonlySet<number>): void {
+    // Clear any stale overlay on every mesh entry, then rebuild only for the object being edited.
+    for (const [id, entry] of this.meshSync.allEntries()) {
+      if (id !== objectId) updateSelectionOverlay(entry.mesh, entry.editableMesh, 'object', new Set());
+    }
+    if (!objectId) {
+      this.requestRender();
+      return;
+    }
+    const entry = this.meshSync.getEntry(objectId);
+    if (!entry) return;
+    updateSelectionOverlay(entry.mesh, entry.editableMesh, mode, selected);
+    this.requestRender();
+  }
+
+  pickObject(pointer: { x: number; y: number }): string | undefined {
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2((pointer.x / width) * 2 - 1, -(pointer.y / height) * 2 + 1);
+    raycaster.setFromCamera(ndc, this.cameraController.camera);
+    const meshes: THREE.Object3D[] = [];
+    const idByMesh = new Map<THREE.Object3D, string>();
+    for (const [id, entry] of this.meshSync.allEntries()) {
+      meshes.push(entry.mesh);
+      idByMesh.set(entry.mesh, id);
+    }
+    const hits = raycaster.intersectObjects(meshes, false);
+    return hits[0] ? idByMesh.get(hits[0].object) : undefined;
+  }
+
+  pick(
+    objectId: string,
+    mode: SelectMode,
+    pointer: { x: number; y: number },
+  ): { face?: number; edge?: number; vertex?: number } {
+    const entry = this.meshSync.getEntry(objectId);
+    if (!entry) return {};
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    const camera = this.cameraController.camera;
+    entry.mesh.updateWorldMatrix(true, false);
+    if (mode === 'face') {
+      return { face: pickFace(entry.mesh, entry.triangleFaceMap, camera, pointer, width, height) };
+    }
+    if (mode === 'edge') {
+      return { edge: pickEdge(entry.editableMesh, entry.mesh.matrixWorld, camera, pointer, width, height) };
+    }
+    if (mode === 'vertex') {
+      return { vertex: pickVertex(entry.editableMesh, entry.mesh.matrixWorld, camera, pointer, width, height) };
+    }
+    return {};
   }
 
   dispose(): void {

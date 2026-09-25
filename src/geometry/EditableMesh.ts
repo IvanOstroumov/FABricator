@@ -48,18 +48,19 @@ export class EditableMesh {
     return index;
   }
 
-  setUv(vertexIndex: number, u: number, v: number): void {
-    // Convenience for primitive generators that build one UV per vertex
-    // (no seams yet); stored per-corner once faces reference it below.
-    this.pendingVertexUv.set(vertexIndex, [u, v]);
-  }
-
-  private pendingVertexUv = new Map<number, [number, number]>();
-
-  /** Connects half-edge twins automatically by matching directed edges. */
-  addFace(verts: number[], material = 0): number {
+  /**
+   * Connects half-edge twins automatically by matching directed edges.
+   * `uvs` gives one UV pair per corner (i.e. per entry in `verts`), stored
+   * per half-edge rather than per vertex — the same physical vertex can
+   * carry a different UV for each face that touches it, which is exactly
+   * what a texture seam needs.
+   */
+  addFace(verts: number[], uvs: [number, number][], material = 0): number {
     if (verts.length < 3) {
       throw new Error('addFace requires at least 3 vertices');
+    }
+    if (uvs.length !== verts.length) {
+      throw new Error('addFace requires one UV pair per vertex');
     }
     const n = verts.length;
     const firstHe = this.heVert.length;
@@ -73,8 +74,7 @@ export class EditableMesh {
       this.heNext.push(firstHe + ((i + 1) % n));
       this.hePrev.push(firstHe + ((i - 1 + n) % n));
       this.heFace.push(EMPTY); // set below once we know the face index
-      const uv = this.pendingVertexUv.get(from) ?? [0, 0];
-      this.heUv.push(uv[0], uv[1]);
+      this.heUv.push(uvs[i][0], uvs[i][1]);
 
       if (this.vertHalfEdge[from] === EMPTY) {
         this.vertHalfEdge[from] = heIndex;
@@ -123,6 +123,97 @@ export class EditableMesh {
 
   vertexPosition(v: number): Vec3 {
     return { x: this.positions[v * 3], y: this.positions[v * 3 + 1], z: this.positions[v * 3 + 2] };
+  }
+
+  setVertexPosition(v: number, p: Vec3): void {
+    this.positions[v * 3] = p.x;
+    this.positions[v * 3 + 1] = p.y;
+    this.positions[v * 3 + 2] = p.z;
+  }
+
+  /** All half-edges whose face-corner starts at this vertex (outgoing). */
+  outgoingHalfEdges(v: number): number[] {
+    const result: number[] = [];
+    const heCount = this.heVert.length;
+    for (let h = 0; h < heCount; h++) {
+      if (this.heVert[this.hePrev[h]] === v) result.push(h);
+    }
+    return result;
+  }
+
+  /** Faces incident to a vertex, via its outgoing half-edges. */
+  vertexFaces(v: number): number[] {
+    const faces = new Set<number>();
+    for (const h of this.outgoingHalfEdges(v)) {
+      if (this.heFace[h] !== EMPTY) faces.add(this.heFace[h]);
+    }
+    return [...faces];
+  }
+
+  /**
+   * Enumerates unique edges as `{ id, a, b }`, where `id` is the lower of
+   * the two half-edge indices sharing that edge (or the sole one, for a
+   * border edge) — stable enough for a selection key within one mesh
+   * instance since half-edges are never reordered in Phase 2-3.
+   */
+  edges(): { id: number; a: number; b: number }[] {
+    const seen = new Set<number>();
+    const result: { id: number; a: number; b: number }[] = [];
+    for (let h = 0; h < this.heVert.length; h++) {
+      const id = this.edgeId(h);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      result.push({ id, a: this.heVert[this.hePrev[h]], b: this.heVert[h] });
+    }
+    return result;
+  }
+
+  private edgeId(h: number): number {
+    const twin = this.heTwin[h];
+    return twin === EMPTY ? h : Math.min(h, twin);
+  }
+
+  /** Edge-loop walk starting from a half-edge, per the PRD algorithm: cross each quad via next(next(h)), then twin. */
+  edgeLoop(startHe: number): number[] {
+    const loopHalfEdges: number[] = [];
+    let h = startHe;
+    for (let guard = 0; guard < this.heVert.length; guard++) {
+      loopHalfEdges.push(this.edgeId(h));
+      const face = this.heFace[h];
+      if (face === EMPTY) break;
+      const verts = this.faceVertices(face);
+      if (verts.length !== 4) break; // only quads carry a well-defined opposite edge
+      const twin = this.heTwin[this.heNext[this.heNext[h]]];
+      if (twin === EMPTY) break;
+      const nextFace = this.heFace[twin];
+      if (nextFace === EMPTY) break;
+      h = this.heNext[this.heNext[twin]];
+      if (this.edgeId(h) === this.edgeId(startHe)) break;
+    }
+    return [...new Set(loopHalfEdges)];
+  }
+
+  /** Breadth-first over faces sharing an edge (twin), for "select linked" (L). */
+  connectedFaces(seedFace: number): number[] {
+    const visited = new Set<number>([seedFace]);
+    const queue = [seedFace];
+    while (queue.length) {
+      const f = queue.shift()!;
+      const start = this.faceHalfEdge[f];
+      let h = start;
+      do {
+        const twin = this.heTwin[h];
+        if (twin !== EMPTY) {
+          const neighborFace = this.heFace[twin];
+          if (neighborFace !== EMPTY && !visited.has(neighborFace)) {
+            visited.add(neighborFace);
+            queue.push(neighborFace);
+          }
+        }
+        h = this.heNext[h];
+      } while (h !== start);
+    }
+    return [...visited];
   }
 
   /** Newell's method: robust for n-gons and slightly non-planar faces. */
